@@ -6,6 +6,15 @@ Funciona com a tradução **PT-BR da Tokyo Games RGH**: o `default.xbe` europeu 
 
 **Estado:** o jogo roda inteiro (menus, vídeos, som, fases) a até 60 fps.
 
+**Download:** o `black.nro` está em [Releases](https://github.com/gerisson1996/BLACK-NX-PORT/releases).
+
+### ☕ Apoie o projeto
+
+Se o port foi útil para você, considere apoiar:
+
+- **Ko-fi:** [ko-fi.com/gerissoncassiano](https://ko-fi.com/gerissoncassiano)
+- **Pix:** `pocketneogames@gmail.com`
+
 > [!IMPORTANT]
 > Este repositório **não contém nenhum arquivo do jogo** nem código derivado dele. Você precisa da sua própria cópia original do Black.
 
