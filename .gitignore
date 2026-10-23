@@ -1,0 +1,18 @@
+# builds e logs locais
+build-switch/
+switch_sd/
+analysis/
+*.log
+Black-Android/out/
+
+# arquivos do jogo e código derivado dele: nunca no repositório
+Black-Android/assets/
+Black-Android/generated/
+*.xbe
+*.iso
+*.nro
+*.elf
+
+# o driver NVK (link para outra pasta, 1,5 GB)
+nvk_sdk
+*.enc
