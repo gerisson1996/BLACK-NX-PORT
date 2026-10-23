@@ -1,5 +1,7 @@
 # BLACK NX PORT
 
+🇧🇷 **Português** · 🇺🇸 [English](README.en.md) · 🇪🇸 [Español](README.es.md)
+
 Port do **Black** (Xbox original, Criterion 2006) para o **Nintendo Switch**, como homebrew (`.nro`), por **recompilação estática**. O código x86 do jogo é traduzido para C++ no PC e compilado para ARM64. Não é emulação: o jogo roda nativo, com o Direct3D 8 e o DirectSound do Xbox reescritos sobre Vulkan (NVK) e o áudio do Switch.
 
 Funciona com a tradução **PT-BR da Tokyo Games RGH**: o `default.xbe` europeu é convertido no americano no próprio console.
