@@ -14,6 +14,8 @@ Funciona com a tradução **PT-BR da Tokyo Games RGH**: o `default.xbe` europeu 
 
 **Vibração (v0.2.0):** funciona no modo portátil, com o par de Joy-Cons, com um Joy-Con sozinho e com o Pro Controller. O motor pesado do Xbox vibra grave no lado esquerdo, e o leve vibra agudo no direito.
 
+**Vídeos e saída (v0.2.4):** os FMVs rodam a 30 fps, inclusive os de 640×480 (logos, créditos e cutscenes) — o decoder WMV do jogo, recompilado, agora é vetorizado em NEON. Fechar pelo botão HOME encerra o jogo limpo, sem crash. O boost de CPU durante filmes é opcional (`cpu_boost = true` no `black.toml`).
+
 ### ☕ Apoie o projeto
 
 Se o port foi útil para você, considere apoiar:

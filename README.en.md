@@ -14,6 +14,8 @@ The port supports the **Brazilian Portuguese translation by Tokyo Games RGH**. I
 
 **Rumble (v0.2.0):** works in handheld mode, with a Joy-Con pair, a single Joy-Con and a Pro Controller. The Xbox heavy motor shakes low on the left side, the light one buzzes high on the right.
 
+**Videos and exit (v0.2.4):** FMVs run at 30 fps, including the 640×480 ones (logos, credits and cutscenes) — the game's recompiled WMV decoder is now NEON-vectorized. Closing with the HOME button ends the game cleanly, without a crash. The CPU boost during films is optional (`cpu_boost = true` in `black.toml`).
+
 ### ☕ Support the project
 
 If you enjoy the port, consider supporting it:

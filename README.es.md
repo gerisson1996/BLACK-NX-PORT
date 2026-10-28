@@ -14,6 +14,8 @@ El port admite la **traducción al portugués de Brasil de Tokyo Games RGH**. Su
 
 **Vibración (v0.2.0):** funciona en modo portátil, con el par de Joy-Con, con un solo Joy-Con y con el Pro Controller. El motor pesado del Xbox vibra grave en el lado izquierdo y el ligero vibra agudo en el derecho.
 
+**Vídeos y salida (v0.2.4):** los FMV corren a 30 fps, incluidos los de 640×480 (logos, créditos y cinemáticas) — el decodificador WMV recompilado del juego ahora está vectorizado en NEON. Cerrar con el botón HOME termina el juego limpiamente, sin crash. El boost de CPU durante las cinemáticas es opcional (`cpu_boost = true` en `black.toml`).
+
 ### ☕ Apoya el proyecto
 
 Si el port te resultó útil, considera apoyarlo:
