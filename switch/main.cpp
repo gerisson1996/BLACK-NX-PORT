@@ -238,10 +238,12 @@ void __libnx_exception_handler(ThreadExceptionDump* ctx) {
     LOGE("crash: main at %p; guest base %p%s", reinterpret_cast<void*>(&main), kernel::g_base,
          base && far >= base && far < base + (1ull << 32) ? "" : " (address outside guest memory)");
     if (base && far >= base && far < base + (1ull << 32)) LOGE("crash: guest address %08X", uint32_t(far - base));
-    for (int i = 0; i < 29; i += 4)
+    for (int i = 0; i < 28; i += 4)
         LOGE("crash: x%-2d %016llX %016llX %016llX %016llX", i, (unsigned long long)ctx->cpu_gprs[i].x,
              (unsigned long long)ctx->cpu_gprs[i + 1].x, (unsigned long long)ctx->cpu_gprs[i + 2].x,
              (unsigned long long)ctx->cpu_gprs[i + 3].x);
+    // cpu_gprs holds x0-x28; x29 is fp
+    LOGE("crash: x28 %016llX fp %016llX", (unsigned long long)ctx->cpu_gprs[28].x, (unsigned long long)ctx->fp.x);
     // on a guest thread: its registers and the return addresses on its stack place the guest code
     if (kernel::Thread* t = kernel::Current(); t && t->ctx) {
         LOGE("crash: on guest thread %X", t->id);

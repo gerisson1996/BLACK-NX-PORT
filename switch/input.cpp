@@ -20,8 +20,20 @@ namespace {
 
 std::mutex g_lock;
 PadState g_pads[4];
-HidVibrationDeviceHandle g_vib[4][2];
-bool g_vib_ok[4];
+
+// the motors for each way a player can hold the controller: a Pro Controller or a Joy-Con pair (left, right), one
+// Joy-Con held sideways, and for player 1 the Joy-Cons on the console
+struct Motors {
+    HidNpadIdType id;
+    HidNpadStyleTag style;
+    int count;
+    HidVibrationDeviceHandle handles[2];
+    bool ok;
+};
+Motors g_vib[4][5];
+constexpr HidNpadStyleTag kVibStyles[5] = {HidNpadStyleTag_NpadFullKey, HidNpadStyleTag_NpadJoyDual,
+                                           HidNpadStyleTag_NpadJoyLeft, HidNpadStyleTag_NpadJoyRight,
+                                           HidNpadStyleTag_NpadHandheld};
 
 int16_t Axis(float v) { return int16_t(std::clamp(v, -1.0f, 1.0f) * 32767.0f); }
 
@@ -72,8 +84,18 @@ void Init() {
     padInitialize(&g_pads[2], HidNpadIdType_No3);
     padInitialize(&g_pads[3], HidNpadIdType_No4);
     const HidNpadIdType ids[4] = {HidNpadIdType_No1, HidNpadIdType_No2, HidNpadIdType_No3, HidNpadIdType_No4};
+    int motors = 0;
     for (int i = 0; i < 4; i++)
-        g_vib_ok[i] = R_SUCCEEDED(hidInitializeVibrationDevices(g_vib[i], 2, ids[i], HidNpadStyleTag_NpadFullKey));
+        for (int s = 0; s < 5; s++) {
+            Motors& m = g_vib[i][s];
+            m.style = kVibStyles[s];
+            if (m.style == HidNpadStyleTag_NpadHandheld && i) continue;  // only player 1 plays on the console
+            m.id = m.style == HidNpadStyleTag_NpadHandheld ? HidNpadIdType_Handheld : ids[i];
+            m.count = (m.style == HidNpadStyleTag_NpadJoyLeft || m.style == HidNpadStyleTag_NpadJoyRight) ? 1 : 2;
+            m.ok = R_SUCCEEDED(hidInitializeVibrationDevices(m.handles, m.count, m.id, m.style));
+            motors += m.ok;
+        }
+    LOGI("input: rumble on %d controller grips", motors);
     LOGI("input: libnx HID, 4 ports, gyro aiming %s (gyro.toml)", gyro::ModeName());
 }
 
@@ -91,19 +113,20 @@ Pad Poll(int port) {
     return p;
 }
 
-// the motors run until set again
+// the motors run until set again. The Xbox pad's left motor is the heavy one, the right the light buzz: on the
+// Switch the left side shakes low and the right side high; one Joy-Con alone takes both
 void Rumble(int port, uint16_t left, uint16_t right) {
     if (app::kGame.rumble) app::kGame.rumble(port, left, right);
-    if (port < 0 || port > 3 || !g_vib_ok[port]) return;
-    HidVibrationValue v[2] = {};
-    float amp[2] = {left / 65535.0f, right / 65535.0f};
-    for (int i = 0; i < 2; i++) {
-        v[i].amp_low = amp[i];
-        v[i].freq_low = 160.0f;
-        v[i].amp_high = amp[i];
-        v[i].freq_high = 320.0f;
+    if (port < 0 || port > 3) return;
+    float heavy = left / 65535.0f, light = right / 65535.0f;
+    HidVibrationValue pair[2] = {}, single[1] = {};
+    pair[0] = {.amp_low = heavy, .freq_low = 160.0f, .amp_high = heavy * 0.5f, .freq_high = 320.0f};
+    pair[1] = {.amp_low = light * 0.5f, .freq_low = 160.0f, .amp_high = light, .freq_high = 320.0f};
+    single[0] = {.amp_low = heavy, .freq_low = 160.0f, .amp_high = light, .freq_high = 320.0f};
+    for (Motors& m : g_vib[port]) {
+        if (!m.ok || !(hidGetNpadStyleSet(m.id) & m.style)) continue;  // only the grip held now
+        hidSendVibrationValues(m.handles, m.count == 2 ? pair : single, m.count);
     }
-    hidSendVibrationValues(g_vib[port], v, 2);
 }
 
 uint64_t NavButtons() {

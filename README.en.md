@@ -12,6 +12,8 @@ The port supports the **Brazilian Portuguese translation by Tokyo Games RGH**. I
 
 **Gyro aiming (v0.2.0):** in *Options → TOUCH CONTROLS → MOTION CONTROLS*, turn **GYROSCOPE** on (**ALWAYS**, or **WHILE FIRING** for ZR held only). It works in handheld mode, with a Pro Controller or with the right Joy-Con. Sensitivity and axis inversion are in the same menu and are saved to `gyro.toml`. While the gyro aims, the game's aim assist is off.
 
+**Rumble (v0.2.0):** works in handheld mode, with a Joy-Con pair, a single Joy-Con and a Pro Controller. The Xbox heavy motor shakes low on the left side, the light one buzzes high on the right.
+
 ### ☕ Support the project
 
 If you enjoy the port, consider supporting it:

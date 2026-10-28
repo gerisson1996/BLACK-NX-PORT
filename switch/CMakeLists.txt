@@ -33,7 +33,7 @@ foreach(i RANGE ${last})
 endforeach()
 file(SHA1 ${XBE} xbe_sha1)
 file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/image_sha1.cpp CONTENT "extern const char kImageSha1[] = \"${xbe_sha1}\";\n")
-file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/build_info.h CONTENT "#define BLACK_COMMIT \"switch-0.2.1-gyro\"\n")
+file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/build_info.h CONTENT "#define BLACK_COMMIT \"switch-0.2.0\"\n")
 
 # glslang with its HLSL front end (the SDK's shaders are HLSL), built here for the Switch
 set(ENABLE_OPT OFF CACHE BOOL "" FORCE)

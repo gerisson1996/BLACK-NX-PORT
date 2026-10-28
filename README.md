@@ -12,6 +12,8 @@ Funciona com a tradução **PT-BR da Tokyo Games RGH**: o `default.xbe` europeu 
 
 **Mira por giroscópio (v0.2.0):** em *Opções → TOUCH CONTROLS → MOTION CONTROLS*, ligue **GYROSCOPE** (**ALWAYS** ou **WHILE FIRING**, só com ZR apertado). Funciona no modo portátil, com o Pro Controller ou com o Joy-Con direito. A sensibilidade e a inversão dos eixos ficam no mesmo menu e são salvas em `gyro.toml`. Enquanto o giroscópio mira, a assistência de mira do jogo fica desligada.
 
+**Vibração (v0.2.0):** funciona no modo portátil, com o par de Joy-Cons, com um Joy-Con sozinho e com o Pro Controller. O motor pesado do Xbox vibra grave no lado esquerdo, e o leve vibra agudo no direito.
+
 ### ☕ Apoie o projeto
 
 Se o port foi útil para você, considere apoiar:
