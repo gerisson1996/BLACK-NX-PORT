@@ -33,7 +33,7 @@ foreach(i RANGE ${last})
 endforeach()
 file(SHA1 ${XBE} xbe_sha1)
 file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/image_sha1.cpp CONTENT "extern const char kImageSha1[] = \"${xbe_sha1}\";\n")
-file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/build_info.h CONTENT "#define BLACK_COMMIT \"switch-0.2.0\"\n")
+file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/build_info.h CONTENT "#define BLACK_COMMIT \"switch-0.2.4\"\n")
 
 # glslang with its HLSL front end (the SDK's shaders are HLSL), built here for the Switch
 set(ENABLE_OPT OFF CACHE BOOL "" FORCE)
@@ -69,7 +69,8 @@ target_compile_options(black PRIVATE -fno-strict-aliasing -fsigned-char)
 set_source_files_properties(${IMGUI_SOURCES} PROPERTIES COMPILE_DEFINITIONS IMGUI_DISABLE_DEFAULT_SHELL_FUNCTIONS)
 set(HOST_SOURCES ${RUNTIME_SOURCES} ${GAME_HOST_SOURCES} ${SWITCH_SOURCES})
 set_source_files_properties(${HOST_SOURCES} PROPERTIES COMPILE_OPTIONS "-include;${HOST}/compat/crt.h")
-set_source_files_properties(${GEN_SOURCES} PROPERTIES COMPILE_OPTIONS "-O2;-w;-fno-strict-aliasing;-fsigned-char")
+set_source_files_properties(${GEN_SOURCES} PROPERTIES COMPILE_OPTIONS
+    "-O3;-fvect-cost-model=very-cheap;-w;-fno-strict-aliasing;-fsigned-char")
 set_source_files_properties(${HOST}/vk_shader.cpp PROPERTIES COMPILE_DEFINITIONS ENABLE_HLSL)
 set_source_files_properties(${HOST}/game_files.cpp PROPERTIES
     COMPILE_DEFINITIONS "EUROPE_PATCH=\"${GAME}/common/europe.patch\""
@@ -97,7 +98,7 @@ target_link_libraries(black PRIVATE
     -Wl,--end-group)
 
 nx_generate_nacp(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/black.nacp
-    NAME "Black Xbox Port" AUTHOR "RECOMP-GUTO" VERSION "0.2.0")
+    NAME "Black Xbox Port" AUTHOR "RECOMP-GUTO" VERSION "0.2.4")
 set(ICON ${HOST}/icon.jpg)
 if(EXISTS ${ICON})
     nx_create_nro(black NACP ${CMAKE_CURRENT_BINARY_DIR}/black.nacp ICON ${ICON})

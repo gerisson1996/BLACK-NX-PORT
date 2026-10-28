@@ -273,11 +273,24 @@ std::recursive_mutex& UiLock() {
     return m;
 }
 
+namespace {
+std::atomic<uint32_t> g_hold_fps{0};
+std::atomic<int64_t> g_hold_until{0};  // steady clock ticks
+}  // namespace
+
+void HoldFrameRate(uint32_t fps) {
+    g_hold_fps = fps;
+    g_hold_until = (std::chrono::steady_clock::now() + std::chrono::milliseconds(250)).time_since_epoch().count();
+}
+
+void CpuBoost(bool) {}
+
 void Pace() {
     using clock = std::chrono::steady_clock;
     static clock::time_point next = clock::now();
     uint32_t cap = Get().fps_cap;
     auto now = clock::now();
+    if (uint32_t hold = g_hold_fps; hold && now.time_since_epoch().count() < g_hold_until) cap = hold;
     if (!cap) {
         next = now;
         return;

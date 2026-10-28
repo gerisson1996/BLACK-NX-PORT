@@ -19,6 +19,10 @@ O Black-Android não emula a GPU do Xbox: o Direct3D 8 e o DirectSound do jogo f
   - `game_files.cpp`: jogo em `sdmc:/switch/black/game`, `europe.patch` aplicado em tempo de execução.
   - `stubs.cpp`: toque, giroscópio, teclado/mouse neutros; `pread` (newlib não tem).
   - `compat/SDL3/SDL.h`: as duas chamadas de SDL que `src/` faz (taxa da tela, sair) em libnx, para o código do jogo ficar intacto.
+- **Filmes (FMV)**: o decoder WMV é código da própria XMV no XBE, recompilado e preso às ops MMX/SSE de 4/8 lanes. Duas alavancas, medidas no console:
+  - o código recompilado é compilado com `-O3 -fvect-cost-model=very-cheap` (`switch/CMakeLists.txt`): o GCC vetoriza os laços de lane em NEON (2,9× mais instruções NEON na seção `XMV`). Os 640×480 saíram de 8,7 para 30 fps só com isso.
+  - `app::CpuBoost` (opção `cpu_boost`, desligada por padrão) pede `ApmCpuBoostMode_FastLoad` enquanto um filme de tela cheia toca (CPU 1785 MHz, GPU no mínimo), com watchdog de 1 s no `Pace()`; no teste no console não foi preciso — os 30 fps vêm só do `-O3`.
+  - Resultado no console: `LO_N_UK`/`C_N_UK` (640×480) e `AK_N`/`02_N`/`05_N` (320×240) estáveis em 30 fps.
 - **Mudanças no SDK** (`XboxXBE-Recomp`, commit `99078b1`):
   - `kernel/memory.cpp`: caminho `__SWITCH__` — reserva de 4 GB com `virtmemFindAslr`, memória por code memory em blocos de 1 MB; a RAM só em `0x80000000` (a janela `0xF0000000` fica sem mapear).
   - `cpu/x86_ops.h`: no GCC do Switch, tipos de memória sem `aligned(1)` (o GCC 16 travava com erro interno; o processador aceita acesso desalinhado).

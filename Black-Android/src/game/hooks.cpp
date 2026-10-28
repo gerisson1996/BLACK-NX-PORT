@@ -648,12 +648,25 @@ void SkipVideo(X86Context&, uint8_t*) {
     uint32_t player = game_object + kFrontEnd + kFilmPlayer;
     uint32_t film = R32(game_object + kCurrentFilm);
     uint32_t state = R32(player + kFilmState);
+    uint32_t movie = R32(player);
     bool background = film < kFilms && G<uint8_t>(kFilmTable + film * kFilmEntry + kFilmBehindMenu);
+    bool playing = movie && state >= 4 && state <= kFilmPlaying;
+    // the decoder is the guest's own WMV code and it is what keeps a film under 30 frames a second on the Switch: the
+    // host boosts the CPU for it, not for the menu loops (a small film behind a page, with the game drawing too)
+    app::CpuBoost(playing && !background);
+    static bool was_playing = false;
+    if (playing != was_playing) {
+        LOGI("film %u: %s, fps %.1f", film, playing ? "playing" : "done", double(game::g_fps.load()));
+        was_playing = playing;
+    }
     if (pressed) LOGI("film %u: press in state %X, flags %X", film, state, R32(player + kFilmFlags));
     // a film keeps the frame time of its start: its frame length, and its clock's step
-    if (uint32_t movie = R32(player); movie && state >= 4 && state <= kFilmPlaying) {
+    if (playing) {
         G<float>(movie + kMovieFrameLength) = G<float>(kGameFrameTime);
         G<float>(movie + kMovieClockStep) = G<float>(game_object + kGameClockStep);
+        // a film steps a frame of that time each frame: faster frames play it slow (at 60 it took 1.6 times as
+        // long), so the frames come at the game's own rate while it plays
+        app::HoldFrameRate(uint32_t(std::lround(1.0f / G<float>(kGameFrameTime))));
     }
     if (background || state < 2 || state > kFilmPlaying) return;
     std::string name = ReadCString(player + kFilmName, 8);

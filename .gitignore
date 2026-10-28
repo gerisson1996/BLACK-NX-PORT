@@ -2,6 +2,7 @@
 build-switch/
 switch_sd/
 analysis/
+dist/
 *.log
 Black-Android/out/
 

@@ -72,6 +72,7 @@ toml::table Table() {
                   {"render_percent", int64_t(s.render_percent)},
                   {"fps_cap", int64_t(s.fps_cap)},
                   {"vsync", s.vsync},
+                  {"cpu_boost", s.cpu_boost},
                   {"anisotropic_filtering", int64_t(s.aniso)},
                   {"join_ip", s.join_ip}};
     for (const Option& o : kGame.options) {
@@ -114,6 +115,7 @@ void Load() {
     s.render_percent = t["render_percent"].value_or(s.render_percent);
     s.fps_cap = t["fps_cap"].value_or(s.fps_cap);
     s.vsync = t["vsync"].value_or(s.vsync);
+    s.cpu_boost = t["cpu_boost"].value_or(s.cpu_boost);
     s.aniso = t["anisotropic_filtering"].value_or(s.aniso);
     s.join_ip = t["join_ip"].value_or(s.join_ip);
     for (const Option& o : kGame.options) {
@@ -190,11 +192,54 @@ std::recursive_mutex& UiLock() {
     return m;
 }
 
+namespace {
+std::atomic<uint32_t> g_hold_fps{0};
+std::atomic<int64_t> g_hold_until{0};  // steady clock ticks
+}  // namespace
+
+void HoldFrameRate(uint32_t fps) {
+    g_hold_fps = fps;
+    g_hold_until = (std::chrono::steady_clock::now() + std::chrono::milliseconds(250)).time_since_epoch().count();
+}
+
+namespace {
+std::atomic<int> g_boost{-1};          // -1 not asked, 0 normal clocks, 1 boosted
+std::atomic<int64_t> g_boost_until{0};  // steady clock ticks: a film that stops being ticked still lets go
+}  // namespace
+
+static void ApplyBoost(bool on) {
+    int want = on ? 1 : 0;
+    if (g_boost.exchange(want) == want) return;
+    Result rc = appletSetCpuBoostMode(on ? ApmCpuBoostMode_FastLoad : ApmCpuBoostMode_Normal);
+    if (R_FAILED(rc)) {
+        g_boost.store(-1, std::memory_order_relaxed);  // not on every firmware: try again next time, say it once
+        static std::atomic<bool> said{false};
+        if (!said.exchange(true)) LOGW("boost: appletSetCpuBoostMode failed (%08X)", uint32_t(rc));
+        return;
+    }
+    LOGI("boost: %s", on ? "on (CPU 1785 MHz)" : "off");
+}
+
+// FastLoad: CPU 1785 MHz and the GPU at its minimum -- the film decoder is the guest's own WMV code, CPU bound
+void CpuBoost(bool on) {
+    if (!Get().cpu_boost) {
+        if (g_boost.load(std::memory_order_relaxed) != 1) return;  // off from the start: nothing to undo
+        on = false;
+    }
+    g_boost_until = on ? (std::chrono::steady_clock::now() + std::chrono::seconds(1)).time_since_epoch().count() : 0;
+    ApplyBoost(on);
+}
+
 void Pace() {
     using clock = std::chrono::steady_clock;
     static clock::time_point next = clock::now();
     uint32_t cap = Get().fps_cap;
     auto now = clock::now();
+    if (uint32_t hold = g_hold_fps; hold && now.time_since_epoch().count() < g_hold_until) cap = hold;
+    if (int64_t until = g_boost_until.load(); until && now.time_since_epoch().count() > until) {
+        g_boost_until = 0;
+        ApplyBoost(false);
+    }
     if (!cap) {
         next = now;
         return;

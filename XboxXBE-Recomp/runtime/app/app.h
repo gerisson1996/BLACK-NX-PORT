@@ -21,6 +21,7 @@ struct Settings {
     uint32_t render_percent = 100;   // of the output height
     uint32_t fps_cap = 60;           // 0 unlimited
     bool vsync = true;
+    bool cpu_boost = false;          // the Switch: fast CPU clocks while a film decodes, the GPU at its minimum then
     uint32_t aniso = 0;              // 0 as the game asks
     std::string join_ip;                   // co-op: a host past the LAN the system link search also asks
 };
@@ -95,5 +96,11 @@ extern const GameInfo kGame;
 
 // sleeps out the rest of the frame for the fps cap
 void Pace();
+// a frame rate the game needs for now, over the fps cap (a film made for 30 frames a second); 0 none. The game
+// sets it each frame it holds: it lapses on its own a moment after the game stops
+void HoldFrameRate(uint32_t fps);
+// the host raises its clocks while the game runs code too heavy for it at the default ones (the film decoder on the
+// Switch: the CPU is boosted and the GPU throttled to its minimum); a no-op on a host without clocks to raise
+void CpuBoost(bool on);
 
 }  // namespace app

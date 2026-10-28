@@ -48,5 +48,7 @@ std::recursive_mutex& UiLock() {
 }
 
 void Pace() {}
+void HoldFrameRate(uint32_t) {}
+void CpuBoost(bool) {}
 
 }  // namespace app

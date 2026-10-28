@@ -237,7 +237,7 @@ void Relaunch(const char* exe) {
 #elif defined(__SWITCH__)
     // a homebrew NRO cannot start another executable: the title ends, the player starts it again
     LOGE("relaunch: %s cannot be started on the Switch", exe);
-    std::_Exit(0);
+    Shutdown(0);
 #else
     char self[4096] = {};
     ssize_t n = readlink("/proc/self/exe", self, sizeof(self) - 1);
@@ -251,6 +251,13 @@ void Relaunch(const char* exe) {
 void Shutdown(int code) {
     LOGR("Exit (%d)", code);
     logx::Flush();
+#ifdef __SWITCH__
+    // libnx's exit hands back to hbloader, which unloads the code while the game's threads still run it: one of
+    // them faults and the console reports a crash. The process ends at once instead, every thread with it, after
+    // the exit lock taken at start (appletLockExit) is released: a title that ends holding it closed with an error
+    appletUnlockExit();
+    svcExitProcess();
+#endif
     std::_Exit(code);
 }
 
