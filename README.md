@@ -10,6 +10,8 @@ Funciona com a tradução **PT-BR da Tokyo Games RGH**: o `default.xbe` europeu 
 
 **Download:** o `black.nro` está em [Releases](https://github.com/gerisson1996/BLACK-NX-PORT/releases).
 
+**Mira por giroscópio (v0.2.0):** em *Opções → TOUCH CONTROLS → MOTION CONTROLS*, ligue **GYROSCOPE** (**ALWAYS** ou **WHILE FIRING**, só com ZR apertado). Funciona no modo portátil, com o Pro Controller ou com o Joy-Con direito. A sensibilidade e a inversão dos eixos ficam no mesmo menu e são salvas em `gyro.toml`. Enquanto o giroscópio mira, a assistência de mira do jogo fica desligada.
+
 ### ☕ Apoie o projeto
 
 Se o port foi útil para você, considere apoiar:

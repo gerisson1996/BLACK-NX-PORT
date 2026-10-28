@@ -1,5 +1,5 @@
-// What the Android host has and the Switch does not: touch controls, gyro aiming, a keyboard and mouse, the update
-// check. Neutral answers for the game's code and the options menu, which ask for them by name.
+// What the Android host has and the Switch does not: touch controls, a keyboard and mouse, the update check (the
+// gyro aiming is gyro.cpp). Neutral answers for the game's code and the options menu, which ask for them by name.
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -40,23 +40,10 @@ void StepSize(int) {}
 void EditLayout() {}
 }  // namespace touch
 
-namespace gyro {
-uint32_t CurrentMode() { return kOff; }
-void SetMode(uint32_t) {}
-const char* ModeName() { return "OFF"; }
-void NextMode() {}
-float Sensitivity() { return 1.0f; }
-void SetSensitivity(float) {}
-bool InvertX() { return false; }
-bool InvertY() { return false; }
-void SetInvert(bool, bool) {}
-}  // namespace gyro
-
 // no keyboard or mouse: the controller is the only input, so no key binds, no cursor, no typed text
 namespace input {
 void ReleaseCursor() {}
 void Keyboard(Pad&) {}
-bool TakeMouse(float&, float&) { return false; }
 const Action* Actions(size_t* count) {
     if (count) *count = 0;
     return nullptr;

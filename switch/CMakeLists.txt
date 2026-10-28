@@ -33,7 +33,7 @@ foreach(i RANGE ${last})
 endforeach()
 file(SHA1 ${XBE} xbe_sha1)
 file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/image_sha1.cpp CONTENT "extern const char kImageSha1[] = \"${xbe_sha1}\";\n")
-file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/build_info.h CONTENT "#define BLACK_COMMIT \"switch-0.1\"\n")
+file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/build_info.h CONTENT "#define BLACK_COMMIT \"switch-0.2.1-gyro\"\n")
 
 # glslang with its HLSL front end (the SDK's shaders are HLSL), built here for the Switch
 set(ENABLE_OPT OFF CACHE BOOL "" FORCE)
@@ -97,7 +97,7 @@ target_link_libraries(black PRIVATE
     -Wl,--end-group)
 
 nx_generate_nacp(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/black.nacp
-    NAME "Black Xbox Port" AUTHOR "RECOMP-GUTO" VERSION "0.1.0")
+    NAME "Black Xbox Port" AUTHOR "RECOMP-GUTO" VERSION "0.2.0")
 set(ICON ${HOST}/icon.jpg)
 if(EXISTS ${ICON})
     nx_create_nro(black NACP ${CMAKE_CURRENT_BINARY_DIR}/black.nacp ICON ${ICON})

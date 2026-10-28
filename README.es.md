@@ -10,6 +10,8 @@ El port admite la **traducción al portugués de Brasil de Tokyo Games RGH**. Su
 
 **Descarga:** el `black.nro` está en [Releases](https://github.com/gerisson1996/BLACK-NX-PORT/releases).
 
+**Apuntado con giroscopio (v0.2.0):** en *Opciones → TOUCH CONTROLS → MOTION CONTROLS*, activa **GYROSCOPE** (**ALWAYS**, o **WHILE FIRING** solo con ZR pulsado). Funciona en modo portátil, con el Pro Controller o con el Joy-Con derecho. La sensibilidad y la inversión de ejes están en el mismo menú y se guardan en `gyro.toml`. Mientras el giroscopio apunta, la asistencia de apuntado del juego se desactiva.
+
 ### ☕ Apoya el proyecto
 
 Si el port te resultó útil, considera apoyarlo:

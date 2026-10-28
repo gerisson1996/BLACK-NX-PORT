@@ -45,7 +45,15 @@ void MouseLook(X86Context& ctx, uint8_t*) {
 }
 
 // false with the keyboard or mouse used last: no pull of the view to a target, no shots bent to one
+#ifdef __SWITCH__
+namespace input {
+bool GyroAiming();  // switch/gyro.cpp: the gyro turns the view now
+}
+// nor while the gyro aims: the slow down near a target and the pull to it fight a turn made by hand
+bool AimAssist(X86Context&, uint8_t*) { return !input::KeyboardActive() && !input::GyroAiming(); }
+#else
 bool AimAssist(X86Context&, uint8_t*) { return !input::KeyboardActive(); }
+#endif
 
 // ebx the player's controller past the game's toggle aim, scopes and all
 void HoldAim(X86Context& ctx, uint8_t*) {

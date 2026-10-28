@@ -74,7 +74,7 @@ void Init() {
     const HidNpadIdType ids[4] = {HidNpadIdType_No1, HidNpadIdType_No2, HidNpadIdType_No3, HidNpadIdType_No4};
     for (int i = 0; i < 4; i++)
         g_vib_ok[i] = R_SUCCEEDED(hidInitializeVibrationDevices(g_vib[i], 2, ids[i], HidNpadStyleTag_NpadFullKey));
-    LOGI("input: libnx HID, 4 ports");
+    LOGI("input: libnx HID, 4 ports, gyro aiming %s (gyro.toml)", gyro::ModeName());
 }
 
 Pad Poll(int port) {

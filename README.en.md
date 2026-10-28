@@ -10,6 +10,8 @@ The port supports the **Brazilian Portuguese translation by Tokyo Games RGH**. I
 
 **Download:** get `black.nro` from [Releases](https://github.com/gerisson1996/BLACK-NX-PORT/releases).
 
+**Gyro aiming (v0.2.0):** in *Options → TOUCH CONTROLS → MOTION CONTROLS*, turn **GYROSCOPE** on (**ALWAYS**, or **WHILE FIRING** for ZR held only). It works in handheld mode, with a Pro Controller or with the right Joy-Con. Sensitivity and axis inversion are in the same menu and are saved to `gyro.toml`. While the gyro aims, the game's aim assist is off.
+
 ### ☕ Support the project
 
 If you enjoy the port, consider supporting it:
