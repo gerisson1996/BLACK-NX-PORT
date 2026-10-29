@@ -84,7 +84,7 @@ file(GLOB IOS_SOURCES CONFIGURE_DEPENDS ${IOS}/*.cpp)
 add_executable(black MACOSX_BUNDLE ${RUNTIME_SOURCES} ${GAME_HOST_SOURCES} ${NATIVE_SOURCES} ${IOS_SOURCES}
                ${GEN_SOURCES} ${IMGUI_SOURCES} ${CMAKE_CURRENT_BINARY_DIR}/image_sha1.cpp
                ${CMAKE_CURRENT_BINARY_DIR}/europe_patch.cpp)
-target_include_directories(black PRIVATE ${SDK}/harness/compat ${NATIVE} ${IOS} ${GAME} ${SDK}/runtime ${GEN}
+target_include_directories(black PRIVATE ${NATIVE}/compat ${SDK}/harness/compat ${NATIVE} ${IOS} ${GAME} ${SDK}/runtime ${GEN}
                            ${CMAKE_CURRENT_BINARY_DIR} ${THIRD}/glslang ${MOLTENVK_INCLUDE_DIR})
 target_include_directories(black SYSTEM PRIVATE ${THIRD}/imgui)
 target_compile_options(black PRIVATE -fno-strict-aliasing -fsigned-char)
