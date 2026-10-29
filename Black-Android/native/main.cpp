@@ -284,10 +284,7 @@ std::filesystem::path ExeDir() {
         // iOS: the app's Documents folder, which the Files app and Finder can see. SDL's pref path is Library/Application
         // Support, out of the player's reach, so the settings, logs and game live under Documents/black instead
         std::filesystem::path d = ".";
-        if (char* p = SDL_GetUserFolder(SDL_FOLDER_DOCUMENTS)) {
-            d = p;
-            SDL_free(p);
-        }
+        if (const char* p = SDL_GetUserFolder(SDL_FOLDER_DOCUMENTS)) d = p;  // SDL keeps it
         d /= "black";
         std::error_code ec;
         std::filesystem::create_directories(d, ec);
