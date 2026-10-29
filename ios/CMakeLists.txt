@@ -41,13 +41,13 @@ file(SHA1 ${XBE} xbe_sha1)
 file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/image_sha1.cpp
      CONTENT "extern const char kImageSha1[] = \"${xbe_sha1}\";\n")
 # the version and the commit the app was built from, so a log says exactly which build ran
-set(BUILD_COMMIT "ios-0.1.0")
+set(BUILD_COMMIT "ios-0.2.5")
 find_package(Git QUIET)
 if(GIT_EXECUTABLE)
     execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD WORKING_DIRECTORY ${ROOT}
                     OUTPUT_VARIABLE head OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET RESULT_VARIABLE failed)
     if(NOT failed AND head)
-        set(BUILD_COMMIT "ios-0.1.0+${head}")
+        set(BUILD_COMMIT "ios-0.2.5+${head}")
     endif()
 endif()
 file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/build_info.h CONTENT "#define BLACK_COMMIT \"${BUILD_COMMIT}\"\n")
@@ -115,7 +115,7 @@ set_target_properties(black PROPERTIES
     MACOSX_BUNDLE_BUNDLE_NAME "Black"
     MACOSX_BUNDLE_GUI_IDENTIFIER "com.gerisson.black"
     MACOSX_BUNDLE_BUNDLE_VERSION "1"
-    MACOSX_BUNDLE_SHORT_VERSION_STRING "0.1.0"
+    MACOSX_BUNDLE_SHORT_VERSION_STRING "0.2.5"
     XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED "NO"
     XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED "NO")
 
