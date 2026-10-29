@@ -408,9 +408,19 @@ void Dispatch(const SDL_Event& e) {
             kernel::Shutdown(0);
             break;
         case SDL_EVENT_WILL_ENTER_BACKGROUND:
+            LOGI("app: will enter background");
             SetForeground(false);
             break;
+        case SDL_EVENT_DID_ENTER_BACKGROUND:
+            LOGI("app: in background");
+            break;
+        case SDL_EVENT_WILL_ENTER_FOREGROUND:
+            // iOS sends this one first; the game may resume on either
+            LOGI("app: will enter foreground");
+            SetForeground(true);
+            break;
         case SDL_EVENT_DID_ENTER_FOREGROUND:
+            LOGI("app: in foreground");
             SetForeground(true);
             break;
         case SDL_EVENT_LOW_MEMORY:
