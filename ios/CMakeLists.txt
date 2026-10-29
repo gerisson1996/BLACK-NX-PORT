@@ -119,6 +119,13 @@ set_target_properties(black PROPERTIES
     XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED "NO"
     XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED "NO")
 
+# the home screen icon: loose PNGs named by the Info.plist's CFBundleIconFiles, copied into the bundle
+file(GLOB APP_ICONS ${IOS}/icons/AppIcon*.png)
+if(APP_ICONS)
+    add_custom_command(TARGET black POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${APP_ICONS} "$<TARGET_BUNDLE_DIR:black>")
+endif()
+
 # MoltenVK 1.4.2 weak-links MTLResidencySetDescriptor, which only the iOS 18 SDK's Metal exports; on older systems
 # the class stays null and MoltenVK checks it. Let the linker keep it undefined instead of failing on the iOS 17 SDK.
 target_link_options(black PRIVATE "-Wl,-U,_OBJC_CLASS_$_MTLResidencySetDescriptor")
