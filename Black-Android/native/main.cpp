@@ -2,6 +2,9 @@
 // by app::kGame (src/common/game_info.cpp)
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#ifdef __APPLE__
+#include <SDL3/SDL_vulkan.h>
+#endif
 #ifdef __ANDROID__
 #include <android/log.h>
 #include <sys/system_properties.h>
@@ -397,6 +400,12 @@ int main(int, char**) {
     app::Load();
     if (app::kGame.init) app::kGame.init();
     app::LogSystem();
+
+#ifdef __APPLE__
+    // MoltenVK travels in the app bundle: SDL loads it from there and makes the Vulkan surface with it
+    if (!SDL_Vulkan_LoadLibrary("@executable_path/Frameworks/MoltenVK.framework/MoltenVK"))
+        LOGE("app: no MoltenVK: %s", SDL_GetError());
+#endif
 
     std::string title = Utf8(app::kGame.title);
     g_window = SDL_CreateWindow(title.c_str(), 0, 0, SDL_WINDOW_FULLSCREEN | SDL_WINDOW_VULKAN | SDL_WINDOW_HIGH_PIXEL_DENSITY);

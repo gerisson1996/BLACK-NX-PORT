@@ -7,7 +7,10 @@
 #       -DMOLTENVK_INCLUDE_DIR=<...> -DMOLTENVK_LIBRARY=<...>/libMoltenVK.a -DCMAKE_BUILD_TYPE=Release
 
 cmake_minimum_required(VERSION 3.22)
-project(black_ios LANGUAGES C CXX OBJC OBJCXX)
+project(black_ios LANGUAGES C CXX)
+
+set(MOLTENVK_INCLUDE_DIR "" CACHE PATH "MoltenVK's include folder (vulkan headers)")
+set(MOLTENVK_FRAMEWORK_DIR "" CACHE PATH "folder holding MoltenVK.framework")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -77,6 +80,8 @@ add_executable(black MACOSX_BUNDLE ${RUNTIME_SOURCES} ${GAME_HOST_SOURCES} ${NAT
 target_include_directories(black PRIVATE ${SDK}/harness/compat ${NATIVE} ${IOS} ${GAME} ${SDK}/runtime ${GEN}
                            ${CMAKE_CURRENT_BINARY_DIR} ${THIRD}/glslang ${MOLTENVK_INCLUDE_DIR})
 target_include_directories(black SYSTEM PRIVATE ${THIRD}/imgui)
+target_link_directories(black PRIVATE ${MOLTENVK_FRAMEWORK_DIR})
+target_link_options(black PRIVATE "-Wl,-rpath,@executable_path/Frameworks")
 target_compile_options(black PRIVATE -fno-strict-aliasing -fsigned-char)
 set_source_files_properties(${IMGUI_SOURCES} PROPERTIES COMPILE_DEFINITIONS IMGUI_DISABLE_DEFAULT_SHELL_FUNCTIONS)
 set_source_files_properties(${NATIVE}/vk_shader.cpp PROPERTIES COMPILE_DEFINITIONS ENABLE_HLSL)
@@ -95,8 +100,16 @@ set_target_properties(black PROPERTIES
 
 target_link_libraries(black PRIVATE
     SDL3::SDL3-static
-    ${MOLTENVK_LIBRARY}
+    "-framework MoltenVK"
     tomlplusplus::tomlplusplus glslang glslang-default-resource-limits
     "-framework UIKit" "-framework Foundation" "-framework Metal" "-framework QuartzCore"
     "-framework CoreGraphics" "-framework CoreMotion" "-framework CoreAudio" "-framework AudioToolbox"
     "-framework AVFoundation" "-framework GameController" "-framework CoreHaptics")
+
+# MoltenVK travels with the app, loaded by SDL and linked by the renderer at @executable_path/Frameworks
+if(APPLE)
+    add_custom_command(TARGET black POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_BUNDLE_DIR:black>/Frameworks"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory ${MOLTENVK_FRAMEWORK_DIR}/MoltenVK.framework
+                "$<TARGET_BUNDLE_DIR:black>/Frameworks/MoltenVK.framework")
+endif()
