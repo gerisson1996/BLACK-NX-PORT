@@ -29,8 +29,13 @@ union SDL_Event {
     uint8_t padding[128];
 };
 
-// the quit option of the game's exit menu: the applet is asked to close, as HOME then close would
+namespace kernel {
+[[noreturn]] void Quit();
+}
+
+// the quit option of the game's exit menu: the title leaves on its own, the system told first. appletRequestExitToSelf
+// does nothing for a homebrew run through hbloader
 inline bool SDL_PushEvent(SDL_Event* e) {
-    if (e && e->type == SDL_EVENT_QUIT) appletRequestExitToSelf();
+    if (e && e->type == SDL_EVENT_QUIT) kernel::Quit();
     return true;
 }

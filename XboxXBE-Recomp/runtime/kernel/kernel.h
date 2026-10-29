@@ -189,6 +189,12 @@ bool ReadGameFile(const std::string& xbox_path, std::vector<uint8_t>& out);  // 
 // boot
 bool Boot(std::vector<uint8_t> xbe, const std::string& xbe_name, const std::string& game_dir, const std::string& data_dir);
 [[noreturn]] void Shutdown(int code);
+// the title leaves on its own (its quit option, a return to the dashboard): on the Switch the system is told first
+[[noreturn]] void Quit();
+#ifdef __SWITCH__
+bool QuitAsked();             // the applet thread's loop ends on it
+[[noreturn]] void FinishQuit();  // then the applet thread ends the title
+#endif
 // the executable recompiled from an Xbox image path (D:\\default.xbe), null when there is none
 const char* ImageExe(std::string xbe_path);
 [[noreturn]] void Relaunch(const char* exe);

@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <atomic>
 #include <cstring>
 #include <cstdlib>
 #include <fstream>
@@ -22,6 +23,7 @@
 #ifdef __SWITCH__
 #include <malloc.h>
 #include <switch.h>
+extern "C" u32 __nx_applet_exit_mode;  // libnx's applet.c, not in its headers
 #endif
 
 namespace dispatch {
@@ -237,7 +239,7 @@ void Relaunch(const char* exe) {
 #elif defined(__SWITCH__)
     // a homebrew NRO cannot start another executable: the title ends, the player starts it again
     LOGE("relaunch: %s cannot be started on the Switch", exe);
-    Shutdown(0);
+    Quit();
 #else
     char self[4096] = {};
     ssize_t n = readlink("/proc/self/exe", self, sizeof(self) - 1);
@@ -259,6 +261,37 @@ void Shutdown(int code) {
     svcExitProcess();
 #endif
     std::_Exit(code);
+}
+
+#ifdef __SWITCH__
+namespace {
+std::atomic<bool> g_quit{false};
+}
+bool QuitAsked() { return g_quit; }
+
+void FinishQuit() {
+    // a process that ends unasked closes with an error unless the system was told: the exit lock goes, then libnx's
+    // applet exit with its exit mode 1 tells it the title is leaving (an application's Exit, a library applet's
+    // ExitProcessAndReturn) and closes the applet services. The applet thread does it, so no message loop still
+    // reads a service closed under it
+    LOGR("Quit: telling the system");
+    logx::Flush();
+    appletUnlockExit();
+    __nx_applet_exit_mode = 1;
+    appletExit();
+    svcExitProcess();
+    std::_Exit(0);
+}
+#endif
+
+void Quit() {
+#ifdef __SWITCH__
+    // the applet thread leaves (FinishQuit); this game thread waits for the process to end under it
+    LOGR("Quit");
+    g_quit = true;
+    for (;;) svcSleepThread(1000000000ll);
+#endif
+    Shutdown(0);
 }
 
 }  // namespace kernel

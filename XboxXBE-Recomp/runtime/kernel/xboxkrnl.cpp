@@ -1193,10 +1193,10 @@ KERNEL_EXPORT(49, HalReturnToFirmware, 1) {
         LOGW("HalReturnToFirmware: %s is no recompiled image", path.c_str());
     }
     LogGuestStack(ctx, 256);
-    Shutdown(0);
+    Quit();
 }
 
-KERNEL_EXPORT(360, HalInitiateShutdown, 0) { Shutdown(0); }
+KERNEL_EXPORT(360, HalInitiateShutdown, 0) { Quit(); }
 KERNEL_EXPORT(358, HalIsResetOrShutdownPending, 0) { return 0; }
 KERNEL_EXPORT(47, HalRegisterShutdownNotification, 2) { return 0; }
 // the file cache in pages: nothing is cached here, the size only goes back to the title

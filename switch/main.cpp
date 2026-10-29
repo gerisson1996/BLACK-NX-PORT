@@ -376,7 +376,7 @@ int main(int, char**) {
 
     // the applet's messages (HOME, docking, exit) on this thread; the game runs on its own
     auto alive = std::chrono::steady_clock::now();
-    while (appletMainLoop()) {
+    while (appletMainLoop() && !kernel::QuitAsked()) {
         // a line every 5 seconds: a log that stops with these still coming is a hang, not an exit
         if (std::chrono::steady_clock::now() - alive > std::chrono::seconds(5)) {
             alive = std::chrono::steady_clock::now();
@@ -390,6 +390,7 @@ int main(int, char**) {
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
+    if (kernel::QuitAsked()) kernel::FinishQuit();
     logx::Flush();
     kernel::Shutdown(0);
     appletUnlockExit();

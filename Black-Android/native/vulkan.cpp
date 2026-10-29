@@ -1141,6 +1141,7 @@ private:
     std::vector<VkSemaphore> swap_done_;
     bool vsync_ = true;
     bool swap_stale_ = false;
+    bool device_lost_ = false;  // iOS: the Metal device died (backgrounded mid-frame); nothing can be submitted after it
     bool surface_lost_ = false;  // the driver said the window is gone: the surface is made again too
     uint32_t surface_failures_ = 0;  // presents in a row without a surface, for the log
     uint32_t present_index_ = 0;  // the image the frame's submit signals the present of
@@ -1848,6 +1849,7 @@ void VulkanBackend::ResetFrame(Frame& f) {
 
 // present: the frame's last commands, waiting on the acquired image and signalling its present semaphore
 void VulkanBackend::Submit(bool wait, bool present) {
+    if (device_lost_) return;  // the Metal device died: no submit can succeed until the app is restarted
     EndRender();
     Frame& f = CurrentFrame();
     vkEndCommandBuffer(f.cb);
@@ -1881,8 +1883,12 @@ void VulkanBackend::Submit(bool wait, bool present) {
         std::lock_guard lock(fence_lock_);
         r = vkQueueSubmit(queue_, 1, &si, SubmitFence(signal));
     }
-    if (r != VK_SUCCESS)
+    if (r == VK_ERROR_DEVICE_LOST) {
+        if (!device_lost_) LOGE("vulkan: device lost");
+        device_lost_ = true;
+    } else if (r != VK_SUCCESS) {
         LOGE("vulkan: submit %llu%s failed (%d)", (unsigned long long)signal, present ? " (present)" : "", int(r));
+    }
     f.value = signal;
     if (wait) {
         ResetFrame(f);
@@ -3085,7 +3091,7 @@ void VulkanBackend::RecordLate(uint32_t data) {
 // the swap chain made again when Android gave a new window, the size or vsync changed; the surface too when the
 // window is new, lost, or could not be made last time. false: nothing to show on, the frame is dropped
 bool VulkanBackend::AcquireImage(uint32_t& index) {
-    if (!host::Foreground()) return false;
+    if (device_lost_ || !host::Foreground()) return false;
     if (!surface_ || surface_lost_ || host::SurfaceEpoch() != surface_epoch_) {
         if (surface_) LOGI("vulkan: new surface (%s)", surface_lost_ ? "lost" : "new window");
         DestroySwapchain();

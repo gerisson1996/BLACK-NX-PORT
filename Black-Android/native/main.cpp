@@ -4,6 +4,7 @@
 #include <SDL3/SDL_main.h>
 #ifdef __APPLE__
 #include <SDL3/SDL_vulkan.h>
+#include "lifecycle.h"
 #include <execinfo.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -129,6 +130,10 @@ float RefreshRate() {
 }
 
 }  // namespace
+
+// UIKit's lifecycle notifications (ios/lifecycle.mm) arrive before SDL's background events: the renderer stops
+// presenting while the app is not active, before the drawable goes away
+extern "C" void BlackSetForeground(int on) { SetForeground(on != 0); }
 
 namespace host {
 
@@ -527,6 +532,9 @@ int main(int, char**) {
         logx::Flush();
         return 1;
     }
+#ifdef __APPLE__
+    IosLifecycleStart();
+#endif
     logx::Init((app::ExeDir() / "logs").string(), app::kGame.log);
 #ifdef __APPLE__
     // a line every 5 s from its own thread: a log that stops with these still coming is a hang, not a kill
