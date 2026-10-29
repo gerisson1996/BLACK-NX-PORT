@@ -1,0 +1,83 @@
+# Builds the iOS app and packs an unsigned .ipa: the XBE comes from ci/default.xbe.enc (secret XBE_KEY), the x86 is
+# recompiled here, then the SDK runtime, the game sources and the SDL3 host are built for arm64 iOS with MoltenVK.
+name: iOS
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["ios-*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 300
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Decrypt default.xbe
+        env:
+          XBE_KEY: ${{ secrets.XBE_KEY }}
+        run: |
+          if [ -z "$XBE_KEY" ]; then echo "::error::The XBE_KEY secret is missing"; exit 1; fi
+          mkdir -p Black-Android/assets
+          key="$RUNNER_TEMP/xbe.key"
+          printf '%s' "$XBE_KEY" > "$key"
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in Black-Android/ci/default.xbe.enc \
+            -out Black-Android/assets/default.xbe -pass "file:$key"
+          rm -f "$key"
+          shasum -a 1 Black-Android/assets/default.xbe
+
+      - name: Recompiler
+        run: |
+          cmake -S Black-Android/tools -B build-tools -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-tools --parallel
+
+      - name: Recompile the game
+        run: |
+          cd Black-Android
+          ../build-tools/xbe_recomp config/game.toml --xdk ../XboxXBE-Recomp/xdk
+
+      - name: SDL3 for iOS
+        run: |
+          curl -L -o sdl.tar.gz https://github.com/libsdl-org/SDL/releases/download/release-3.4.16/SDL3-3.4.16.tar.gz
+          tar xf sdl.tar.gz
+          cmake -S SDL3-3.4.16 -B build-sdl -G Ninja \
+            -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=15.0 \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PWD/sdl-prefix" \
+            -DSDL_STATIC=ON -DSDL_SHARED=OFF -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF
+          cmake --build build-sdl --parallel
+          cmake --install build-sdl
+
+      - name: MoltenVK for iOS
+        run: |
+          curl -L -o mvk.tar https://github.com/KhronosGroup/MoltenVK/releases/download/v1.4.2/MoltenVK-ios.tar
+          mkdir -p mvk && tar xf mvk.tar -C mvk
+
+      - name: Build the app
+        run: |
+          cmake -S ios -B build-ios -G Ninja \
+            -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=15.0 \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$PWD/sdl-prefix" \
+            -DMOLTENVK_INCLUDE_DIR="$PWD/mvk/MoltenVK/MoltenVK/include" \
+            -DMOLTENVK_LIBRARY="$PWD/mvk/MoltenVK/MoltenVK/static/MoltenVK.xcframework/ios-arm64/libMoltenVK.a"
+          cmake --build build-ios --parallel
+
+      - name: Pack the .ipa
+        run: |
+          mkdir -p Payload
+          cp -R build-ios/black.app Payload/
+          # the plist and the executable are what an unsigned install needs; sign with TrollStore/Sideloadly to run
+          zip -qry Black-0.1.0.ipa Payload
+          ls -l Black-0.1.0.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Black-ios-ipa
+          path: Black-0.1.0.ipa
