@@ -1265,7 +1265,14 @@ bool VulkanBackend::CreateSurface() {
         return false;
     }
 #endif
-    if (!SDL_Vulkan_CreateSurface(host::Window(), instance_, nullptr, &surface_)) {
+    bool made = false;
+#ifdef __APPLE__
+    // UIKit and the CAMetalLayer belong to the main thread: the game's thread hands the call over and waits
+    host::RunOnMain([&] { made = SDL_Vulkan_CreateSurface(host::Window(), instance_, nullptr, &surface_); });
+#else
+    made = SDL_Vulkan_CreateSurface(host::Window(), instance_, nullptr, &surface_);
+#endif
+    if (!made) {
         surface_ = VK_NULL_HANDLE;
         if (surface_failures_++ == 0) LOGE("vulkan: no surface: %s", SDL_GetError());
         return false;

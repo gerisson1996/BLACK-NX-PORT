@@ -25,6 +25,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <deque>
 #include <ctime>
 #include <exception>
 #include <cwchar>
@@ -143,6 +144,45 @@ void WaitForeground() {
 void WindowPixels(int& w, int& h) {
     w = h = 0;
     if (g_window) SDL_GetWindowSizeInPixels(g_window, &w, &h);
+}
+
+#ifdef __APPLE__
+namespace {
+std::mutex g_main_mutex;
+std::condition_variable g_main_cv;
+std::deque<std::function<void()>> g_main_queue;
+}  // namespace
+#endif
+
+// iOS: UIKit and Metal views belong to the main thread. The renderer, which runs on the game's thread, hands the call
+// over and the main loop runs it between events
+void RunOnMain(std::function<void()> fn) {
+#ifndef __APPLE__
+    fn();
+#else
+    std::unique_lock lock(g_main_mutex);
+    bool done = false;
+    g_main_queue.push_back([&] {
+        fn();
+        {
+            std::lock_guard inner(g_main_mutex);
+            done = true;
+        }
+        g_main_cv.notify_all();
+    });
+    g_main_cv.wait_for(lock, std::chrono::seconds(5), [&] { return done; });
+#endif
+}
+
+void PumpMain() {
+#ifdef __APPLE__
+    std::deque<std::function<void()>> queue;
+    {
+        std::lock_guard lock(g_main_mutex);
+        queue.swap(g_main_queue);
+    }
+    for (auto& fn : queue) fn();
+#endif
 }
 
 }  // namespace host
@@ -534,6 +574,7 @@ int main(int, char**) {
     LOGI("app: booted");
 
     for (;;) {
+        host::PumpMain();
         SDL_Event e;
         if (SDL_WaitEventTimeout(&e, 100)) {
             Dispatch(e);

@@ -1,6 +1,7 @@
 #pragma once
 // What the Android host's parts share: the window, the app's lifecycle and the event routing
 #include <cstdint>
+#include <functional>
 
 union SDL_Event;
 struct SDL_Window;
@@ -20,6 +21,10 @@ uint32_t SurfaceEpoch();
 void WaitForeground();
 // the window's size in pixels
 void WindowPixels(int& w, int& h);
+// iOS only, where UIKit and Metal surfaces belong to the main thread: runs fn there and waits. The main thread calls
+// PumpMain between events; on Android the call runs inline
+void RunOnMain(std::function<void()> fn);
+void PumpMain();
 
 }  // namespace host
 
