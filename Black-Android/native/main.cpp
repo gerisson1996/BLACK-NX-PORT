@@ -2,8 +2,13 @@
 // by app::kGame (src/common/game_info.cpp)
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#ifdef __ANDROID__
 #include <android/log.h>
 #include <sys/system_properties.h>
+#endif
+#ifdef __APPLE__
+#include <sys/sysctl.h>
+#endif
 #include <unistd.h>
 
 #include <algorithm>
@@ -46,6 +51,7 @@ std::string Utf8(const wchar_t* w) {
 }
 
 // the log's lines to logcat as well: stderr is read on a thread of its own
+#ifdef __ANDROID__
 void LogToLogcat() {
     int fds[2];
     if (pipe(fds)) return;
@@ -61,11 +67,25 @@ void LogToLogcat() {
         }
     }).detach();
 }
+#else
+// the log goes to the file and to stderr, which Xcode shows
+void LogToLogcat() {}
+#endif
 
 std::string Property(const char* name) {
+#ifdef __ANDROID__
     char v[PROP_VALUE_MAX] = {};
     __system_property_get(name, v);
     return v;
+#elif defined(__APPLE__)
+    (void)name;
+    char v[256] = {};
+    size_t n = sizeof v;
+    return sysctlbyname("hw.machine", v, &n, nullptr, 0) == 0 ? std::string(v) : std::string();
+#else
+    (void)name;
+    return {};
+#endif
 }
 
 void SetForeground(bool on) {
@@ -216,8 +236,12 @@ void LogSystem() {
     std::strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S", std::localtime(&now));
     LOGR("%ls (%s), %s, build %s", kGame.title, IMAGE_XBE, date, BLACK_COMMIT);
     LOGR("Path: %s", ExeDir().c_str());
+#ifdef __ANDROID__
     LOGR("Device: %s %s, Android %s (API %d)", Property("ro.product.manufacturer").c_str(),
          Property("ro.product.model").c_str(), Property("ro.build.version.release").c_str(), SDL_GetAndroidSDKVersion());
+#else
+    LOGR("Device: %s, %s", Property("hw.machine").c_str(), SDL_GetPlatform());
+#endif
     LOGR("CPU: %s (%d threads)", Property("ro.soc.model").c_str(), SDL_GetNumLogicalCPUCores());
     LOGR("RAM: %.1f GB", SDL_GetSystemRAM() / 1024.0);
     Mode desk = Desktop();
@@ -247,10 +271,18 @@ float RenderScale(uint32_t guest_height) {
 // app-specific external storage: the player can reach the logs, saves and settings over USB
 std::filesystem::path ExeDir() {
     static const std::filesystem::path dir = [] {
+#ifdef __ANDROID__
         const char* p = nullptr;
         if (SDL_GetAndroidExternalStorageState() & SDL_ANDROID_EXTERNAL_STORAGE_WRITE) p = SDL_GetAndroidExternalStoragePath();
         if (!p) p = SDL_GetAndroidInternalStoragePath();
         return std::filesystem::path(p ? p : ".");
+#else
+        // iOS: the app's Documents folder, which the Files app and Finder can see
+        char* p = SDL_GetPrefPath("black", "black");
+        std::filesystem::path d = p ? p : ".";
+        SDL_free(p);
+        return d;
+#endif
     }();
     return dir;
 }
@@ -354,9 +386,11 @@ int main(int, char**) {
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
     SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "0");
+#ifdef __ANDROID__
     SDL_SetHint(SDL_HINT_ANDROID_TRAP_BACK_BUTTON, "1");
+#endif
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_GAMEPAD | SDL_INIT_AUDIO | SDL_INIT_SENSOR)) {
-        __android_log_print(ANDROID_LOG_ERROR, "BLACK", "SDL_Init: %s", SDL_GetError());
+        SDL_Log("SDL_Init: %s", SDL_GetError());
         return 1;
     }
     logx::Init((app::ExeDir() / "logs").string(), app::kGame.log);

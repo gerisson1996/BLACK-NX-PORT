@@ -2,7 +2,9 @@
 // the main thread's event loop (Android's input reaches SDL there), and port 0 also takes the touch controls
 #include "core/input.h"
 
+#ifdef __ANDROID__
 #include <jni.h>
+#endif
 
 #include <algorithm>
 #include <cmath>
@@ -156,6 +158,7 @@ void ShapeSticks(Pad& p) {
 
 }  // namespace
 
+#ifdef __ANDROID__
 // BlackActivity: the loose controller's buttons, sticks and triggers, and its letting go when the app loses the focus
 extern "C" JNIEXPORT void JNICALL Java_com_racas_black_BlackActivity_nativeLooseKey(JNIEnv*, jclass, jint code,
                                                                                      jboolean down) {
@@ -184,6 +187,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_racas_black_BlackActivity_nativeLoose
     g_loose = {};
     g_loose.seen = seen;
 }
+#endif  // __ANDROID__
 
 void Init() {
     int v = SDL_GetVersion();

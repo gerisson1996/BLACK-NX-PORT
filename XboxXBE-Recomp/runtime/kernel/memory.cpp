@@ -1,9 +1,11 @@
 #include "kernel/memory.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <cstring>
 #include <map>
 #include <mutex>
+#include <string>
 #include <vector>
 
 #include "core/log.h"
@@ -16,6 +18,7 @@
 #include <switch.h>
 #else
 #include <sys/mman.h>
+#include <unistd.h>
 #endif
 
 namespace mem {
@@ -100,6 +103,24 @@ bool Init() {
         for (auto& c : cuts) VirtualFree(b + c[0], 0, MEM_RELEASE);
         UnmapViewOfFile(b + kContiguousBase);
         UnmapViewOfFile(b + kWriteCombineBase);
+    }
+#elif defined(__APPLE__)
+    // no memfd_create on Darwin: the RAM is a file in the temporary folder, unlinked once mapped so it lives as long
+    // as the views; the two windows are views of that one file, as the console's RAM was
+    void* p = mmap(reinterpret_cast<void*>(0x100000000ull), size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+    g_base = p == MAP_FAILED ? nullptr : static_cast<uint8_t*>(p);
+    const char* tmp = std::getenv("TMPDIR");
+    std::string tmpl = std::string(tmp && *tmp ? tmp : "/tmp/") + "black-ram-XXXXXX";
+    int fd = g_base ? mkstemp(tmpl.data()) : -1;
+    if (fd >= 0) {
+        unlink(tmpl.c_str());
+        if (ftruncate(fd, kPhysicalSize) ||
+            mmap(g_base + kContiguousBase, kPhysicalSize, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, 0) == MAP_FAILED ||
+            mmap(g_base + kWriteCombineBase, kPhysicalSize, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, 0) == MAP_FAILED)
+            g_base = nullptr;
+        close(fd);
+    } else {
+        g_base = nullptr;
     }
 #else
     void* p = mmap(reinterpret_cast<void*>(0x100000000ull), size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
