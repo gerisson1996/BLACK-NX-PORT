@@ -48,6 +48,13 @@ string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," EUROPE_BYTES "${EUROPE_HEX}")
 file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/europe_patch.cpp
      CONTENT "extern const unsigned char kEuropePatch[] = {${EUROPE_BYTES}};\nextern const unsigned long kEuropePatchSize = sizeof(kEuropePatch);\n")
 
+# The CI installs SDL3 in sdl-prefix at the repository root. Cross-compiling, find_package searches the SDK's root
+# path only unless told otherwise, so the mode is widened and the prefix added here as well as through the command line.
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
+if(EXISTS ${ROOT}/sdl-prefix/lib/cmake/SDL3)
+    list(APPEND CMAKE_PREFIX_PATH ${ROOT}/sdl-prefix)
+endif()
+
 find_package(SDL3 CONFIG REQUIRED)
 
 # glslang with its HLSL front end, and toml++, built for iOS here
