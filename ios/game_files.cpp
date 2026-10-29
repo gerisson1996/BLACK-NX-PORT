@@ -29,9 +29,10 @@ namespace fs = std::filesystem;
 // the game's folder beside the settings, and an assets folder in it; the Files app and iTunes drop folders at the
 // app's Documents root, so that layout is looked at too
 std::vector<fs::path> AssetFolders() {
-    std::vector<fs::path> out{ExeDir() / "game", ExeDir() / "game" / "assets", ExeDir() / "assets"};
+    std::vector<fs::path> out{ExeDir(), ExeDir() / "game", ExeDir() / "game" / "assets", ExeDir() / "assets"};
     if (const char* documents = SDL_GetUserFolder(SDL_FOLDER_DOCUMENTS)) {
         fs::path d = documents;
+        out.push_back(d);
         out.push_back(d / "game");
         out.push_back(d / "game" / "assets");
         out.push_back(d / "assets");
