@@ -127,6 +127,7 @@ target_link_libraries(black PRIVATE
     SDL3::SDL3
     ${MOLTENVK_LIBRARY}
     tomlplusplus::tomlplusplus glslang glslang-default-resource-limits
+    z
     "-framework UIKit" "-framework Foundation" "-framework Metal" "-framework QuartzCore"
     "-framework CoreGraphics" "-framework CoreMotion" "-framework CoreAudio" "-framework AudioToolbox"
     "-framework AVFoundation" "-framework GameController" "-framework CoreHaptics"
