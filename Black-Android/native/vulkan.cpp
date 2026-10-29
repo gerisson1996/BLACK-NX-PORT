@@ -1235,13 +1235,16 @@ bool VulkanBackend::CreateInstance() {
 // the epoch is taken only once the surface is made: until then each present tries again
 bool VulkanBackend::CreateSurface() {
     uint32_t epoch = host::SurfaceEpoch();
+#ifdef __ANDROID__
     // Android has not handed the window back yet (resuming, or a surface change): wait for it without asking SDL,
-    // which only fails, and log the outage once, not every present
+    // which only fails, and log the outage once, not every present. iOS has no such handle: SDL makes the surface from
+    // the window's Metal view directly
     SDL_PropertiesID props = SDL_GetWindowProperties(host::Window());
     if (!SDL_GetPointerProperty(props, SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER, nullptr)) {
         if (surface_failures_++ == 0) LOGI("vulkan: waiting for Android's window");
         return false;
     }
+#endif
     if (!SDL_Vulkan_CreateSurface(host::Window(), instance_, nullptr, &surface_)) {
         surface_ = VK_NULL_HANDLE;
         if (surface_failures_++ == 0) LOGE("vulkan: no surface: %s", SDL_GetError());
