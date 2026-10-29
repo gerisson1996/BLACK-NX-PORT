@@ -16,6 +16,8 @@ Funciona com a tradução **PT-BR da Tokyo Games RGH**: o `default.xbe` europeu 
 
 **Vídeos e saída (v0.2.4):** os FMVs rodam a 30 fps, inclusive os de 640×480 (logos, créditos e cutscenes) — o decoder WMV do jogo, recompilado, agora é vetorizado em NEON. Fechar pelo botão HOME encerra o jogo limpo, sem crash. O boost de CPU durante filmes é opcional (`cpu_boost = true` no `black.toml`).
 
+**iOS (v0.2.4):** o mesmo jogo roda em iPhone/iPad como `.ipa` sem assinatura (`Black-iOS-0.2.4.ipa` na mesma release): SDL3 para janela, áudio e controle, e Vulkan via MoltenVK para o Direct3D 8. O jogo vai na pasta Documents do app (`black/game` ou um `.iso` solto); instale com TrollStore ou re-assine com Sideloadly/AltStore.
+
 ### ☕ Apoie o projeto
 
 Se o port foi útil para você, considere apoiar:
