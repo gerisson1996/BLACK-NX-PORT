@@ -109,6 +109,10 @@ set_target_properties(black PROPERTIES
     XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED "NO"
     XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED "NO")
 
+# MoltenVK 1.4.2 weak-links MTLResidencySetDescriptor, which only the iOS 18 SDK's Metal exports; on older systems
+# the class stays null and MoltenVK checks it. Let the linker keep it undefined instead of failing on the iOS 17 SDK.
+target_link_options(black PRIVATE "-Wl,-U,_OBJC_CLASS_$_MTLResidencySetDescriptor")
+
 target_link_libraries(black PRIVATE
     SDL3::SDL3
     ${MOLTENVK_LIBRARY}
