@@ -16,7 +16,7 @@ El port admite la **traducción al portugués de Brasil de Tokyo Games RGH**. Su
 
 **Vídeos y salida (v0.2.4):** los FMV corren a 30 fps, incluidos los de 640×480 (logos, créditos y cinemáticas) — el decodificador WMV recompilado del juego ahora está vectorizado en NEON. Cerrar con el botón HOME termina el juego limpiamente, sin crash. El boost de CPU durante las cinemáticas es opcional (`cpu_boost = true` en `black.toml`).
 
-**iOS (v0.2.4):** el mismo juego corre en iPhone/iPad como `.ipa` sin firma (`Black-iOS-0.2.4.ipa` en la misma release): SDL3 para ventana, audio y mandos, y Vulkan mediante MoltenVK para Direct3D 8. El juego va en la carpeta Documents de la app (`black/game` o un `.iso` suelto); instálalo con TrollStore o vuelve a firmarlo con Sideloadly/AltStore.
+**iOS (v0.2.4):** el mismo juego corre en iPhone/iPad como `.ipa` sin firma (`Black-iOS-0.2.4.ipa` en la misma release): SDL3 para ventana, audio y mandos, y Vulkan mediante MoltenVK para Direct3D 8. El juego va en la carpeta Documents de la app (`black/game` o un `.iso` suelto); instálalo con TrollStore o vuelve a firmarlo con Sideloadly/AltStore. Paso a paso en [IOS-INSTALL.md](IOS-INSTALL.md).
 
 ### ☕ Apoya el proyecto
 

@@ -16,7 +16,7 @@ The port supports the **Brazilian Portuguese translation by Tokyo Games RGH**. I
 
 **Videos and exit (v0.2.4):** FMVs run at 30 fps, including the 640×480 ones (logos, credits and cutscenes) — the game's recompiled WMV decoder is now NEON-vectorized. Closing with the HOME button ends the game cleanly, without a crash. The CPU boost during films is optional (`cpu_boost = true` in `black.toml`).
 
-**iOS (v0.2.4):** the same game runs on iPhone/iPad as an unsigned `.ipa` (`Black-iOS-0.2.4.ipa` in the same release): SDL3 for window, audio and input, and Vulkan through MoltenVK for Direct3D 8. The game goes in the app's Documents folder (`black/game` or a single `.iso`); install with TrollStore or re-sign with Sideloadly/AltStore.
+**iOS (v0.2.4):** the same game runs on iPhone/iPad as an unsigned `.ipa` (`Black-iOS-0.2.4.ipa` in the same release): SDL3 for window, audio and input, and Vulkan through MoltenVK for Direct3D 8. The game goes in the app's Documents folder (`black/game` or a single `.iso`); install with TrollStore or re-sign with Sideloadly/AltStore. Step by step in [IOS-INSTALL.md](IOS-INSTALL.md).
 
 
 ### ☕ Support the project
