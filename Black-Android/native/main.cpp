@@ -4,8 +4,6 @@
 #include <SDL3/SDL_main.h>
 #ifdef __APPLE__
 #include <SDL3/SDL_vulkan.h>
-#include "download.h"
-#include "unzip.h"
 #include <execinfo.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -210,7 +208,6 @@ toml::table Table() {
                   {"vsync", s.vsync},
                   {"anisotropic_filtering", int64_t(s.aniso)},
                   {"join_ip", s.join_ip},
-                  {"game_url", s.game_url},
                   {"defaults", int64_t(kDefaults)}};
     for (const Option& o : kGame.options) {
         if (o.flag) t.insert(o.key, *o.flag);
@@ -261,7 +258,6 @@ void Load() {
     s.vsync = t["vsync"].value_or(s.vsync);
     s.aniso = t["anisotropic_filtering"].value_or(s.aniso);
     s.join_ip = t["join_ip"].value_or(s.join_ip);
-    s.game_url = t["game_url"].value_or(s.game_url);
     if (t["defaults"].value_or(int64_t(0)) < kDefaults) PhoneFrameDefaults(s);
     for (const Option& o : kGame.options) {
         if (o.flag) *o.flag = t[o.key].value_or(*o.flag);
@@ -467,83 +463,6 @@ void OnSignal(int sig, siginfo_t* info, void*) {
     _exit(128 + sig);
 }
 
-// a Google Drive share link is a page, not the file: the direct download endpoint is what the app can fetch
-std::string DriveDirectLink(const std::string& url) {
-    const std::string marker = "/file/d/";
-    const size_t at = url.find(marker);
-    if (at == std::string::npos || url.find("drive.google.com") == std::string::npos) return url;
-    const size_t start = at + marker.size();
-    const size_t end = url.find_first_of("/?#", start);
-    const std::string id = url.substr(start, end == std::string::npos ? std::string::npos : end - start);
-    if (id.empty()) return url;
-    return "https://drive.usercontent.google.com/download?id=" + id + "&export=download&confirm=t";
-}
-
-// the download is a disc image or a zip of the game: put it where FindGame looks, extracting a zip first
-bool PlaceDownload(const std::filesystem::path& file, std::string& error) {
-    std::ifstream f(file, std::ios::binary);
-    char magic[4] = {};
-    f.read(magic, 4);
-    const bool zip = std::memcmp(magic, "PK\x03\x04", 4) == 0;
-    std::error_code ec;
-    const std::filesystem::path base = app::ExeDir();
-    if (!zip) {
-        std::filesystem::remove(base / "game.iso", ec);
-        std::filesystem::rename(file, base / "game.iso", ec);
-        if (ec) {
-            error = "cannot place the image: " + ec.message();
-            return false;
-        }
-        return true;
-    }
-    const std::filesystem::path tmp = base / "import";
-    std::filesystem::remove_all(tmp, ec);
-    if (!UnzipTo(file, tmp, error)) return false;
-    std::filesystem::path game;
-    for (auto it = std::filesystem::recursive_directory_iterator(tmp, ec);
-         it != std::filesystem::recursive_directory_iterator(); ++it) {
-        if (it->is_regular_file(ec) && it->path().filename() == "default.xbe") {
-            game = it->path().parent_path();
-            break;
-        }
-    }
-    if (!game.empty()) {
-        const std::filesystem::path target = base / "game";
-        std::filesystem::remove_all(target, ec);
-        std::filesystem::rename(game, target, ec);
-        if (ec) {
-            ec.clear();
-            std::filesystem::copy(game, target, std::filesystem::copy_options::recursive, ec);
-            if (ec) {
-                error = "cannot move the game folder: " + ec.message();
-                return false;
-            }
-        }
-    } else {
-        std::filesystem::path iso;
-        for (auto it = std::filesystem::recursive_directory_iterator(tmp, ec);
-             it != std::filesystem::recursive_directory_iterator(); ++it) {
-            if (it->is_regular_file(ec) && it->path().extension() == ".iso") {
-                iso = it->path();
-                break;
-            }
-        }
-        if (iso.empty()) {
-            error = "the archive has no default.xbe or .iso";
-            return false;
-        }
-        std::filesystem::remove(base / "game.iso", ec);
-        std::filesystem::rename(iso, base / "game.iso", ec);
-        if (ec) {
-            error = "cannot place the image: " + ec.message();
-            return false;
-        }
-    }
-    std::filesystem::remove_all(tmp, ec);
-    std::filesystem::remove(file, ec);
-    return true;
-}
-
 void InstallCrashHandlers() {
     std::filesystem::path dir = ".";
     if (const char* home = std::getenv("HOME")) dir = std::filesystem::path(home) / "Documents" / "black" / "logs";
@@ -629,55 +548,13 @@ int main(int, char**) {
     LOGI("app: window up");
 
     app::GameFiles game;
-    bool found = app::FindGame(game);
-#ifdef __APPLE__
-    // no game yet and a link in black.toml: fetch the player's own image while the event loop keeps running, then look
-    // again. The app ships no game data and no link of its own
-    if (!found && !app::Get().game_url.empty()) {
-        const std::string url = DriveDirectLink(app::Get().game_url);
-        const std::filesystem::path dest = app::ExeDir() / "download.bin";
-        std::atomic<int> percent{0};
-        std::atomic<bool> done{false};
-        std::string error;
-        LOGI("game: downloading the player's image from %s", url.c_str());
-        std::thread worker([&] {
-            if (!IosDownloadFile(url, dest.string(), percent, error)) LOGE("game: download failed: %s", error.c_str());
-            done = true;
-        });
-        int shown = -1;
-        while (!done) {
-            SDL_PumpEvents();
-            SDL_Event e;
-            while (SDL_PollEvent(&e)) Dispatch(e);
-            if (const int step = percent.load() / 10; step != shown) {
-                shown = step;
-                LOGI("game: download %d%%", percent.load());
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-        worker.join();
-        std::error_code ec;
-        if (error.empty()) {
-            const auto size = std::filesystem::file_size(dest, ec);
-            // a web page instead of the image (a share link that needs a confirmation) is not a disc
-            if (ec || size < 64ull * 1024 * 1024) {
-                LOGE("game: the download is not a disc image (%llu bytes), removed", (unsigned long long)size);
-                std::filesystem::remove(dest, ec);
-            } else if (!PlaceDownload(dest, error)) {
-                LOGE("game: %s", error.c_str());
-            }
-        }
-        found = app::FindGame(game);
-    }
-#endif
-    if (!found) {
+    if (!app::FindGame(game)) {
         logx::Flush();
 #ifdef __APPLE__
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Black",
                                  "The game files were not found. Put them in the app's Documents/black/game folder "
                                  "(Files app or Finder: default.xbe plus chars, data, export, language, levels, sound "
-                                 "and videos) or an .iso in Documents, or set game_url in black.toml to a direct link "
-                                 "to your own disc image.",
+                                 "and videos) or an .iso in Documents, then open the app again.",
                                  g_window);
 #endif
         return 1;

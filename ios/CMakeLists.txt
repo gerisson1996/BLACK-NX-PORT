@@ -7,7 +7,7 @@
 #       -DMOLTENVK_INCLUDE_DIR=<...> -DMOLTENVK_LIBRARY=<...>/libMoltenVK.a -DCMAKE_BUILD_TYPE=Release
 
 cmake_minimum_required(VERSION 3.22)
-project(black_ios LANGUAGES C CXX OBJC OBJCXX)
+project(black_ios LANGUAGES C CXX)
 
 set(MOLTENVK_INCLUDE_DIR "" CACHE PATH "MoltenVK's include folder (vulkan headers)")
 set(MOLTENVK_LIBRARY "" CACHE FILEPATH "MoltenVK's static library for iOS")
@@ -89,7 +89,7 @@ file(GLOB GAME_HOST_SOURCES CONFIGURE_DEPENDS ${GAME}/*/*.cpp)
 # the SDL3 host is shared with Android; game_files and update are the Android pieces, replaced in ios/
 file(GLOB NATIVE_SOURCES ${NATIVE}/*.cpp)
 list(REMOVE_ITEM NATIVE_SOURCES ${NATIVE}/game_files.cpp ${NATIVE}/update.cpp)
-file(GLOB IOS_SOURCES CONFIGURE_DEPENDS ${IOS}/*.cpp ${IOS}/*.mm)
+file(GLOB IOS_SOURCES CONFIGURE_DEPENDS ${IOS}/*.cpp)
 
 add_executable(black MACOSX_BUNDLE ${RUNTIME_SOURCES} ${GAME_HOST_SOURCES} ${NATIVE_SOURCES} ${IOS_SOURCES}
                ${GEN_SOURCES} ${IMGUI_SOURCES} ${CMAKE_CURRENT_BINARY_DIR}/image_sha1.cpp
@@ -127,7 +127,6 @@ target_link_libraries(black PRIVATE
     SDL3::SDL3
     ${MOLTENVK_LIBRARY}
     tomlplusplus::tomlplusplus glslang glslang-default-resource-limits
-    z
     "-framework UIKit" "-framework Foundation" "-framework Metal" "-framework QuartzCore"
     "-framework CoreGraphics" "-framework CoreMotion" "-framework CoreAudio" "-framework AudioToolbox"
     "-framework AVFoundation" "-framework GameController" "-framework CoreHaptics"
