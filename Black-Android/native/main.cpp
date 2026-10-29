@@ -19,6 +19,7 @@
 #include <chrono>
 #include <cmath>
 #include <condition_variable>
+#include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <cwchar>
@@ -390,6 +391,16 @@ void Dispatch(const SDL_Event& e) {
 
 int main(int, char**) {
     LogToLogcat();
+#ifdef __APPLE__
+    // before SDL: a window, Vulkan or audio failure must still leave a log the player can send. HOME is the app's
+    // container, whose Documents folder is the one the Files app shows
+    {
+        std::filesystem::path docs = ".";
+        if (const char* home = std::getenv("HOME")) docs = std::filesystem::path(home) / "Documents";
+        logx::Init((docs / "black" / "logs").string(), app::kGame.log);
+    }
+    LOGI("app: starting");
+#endif
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
     SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "0");
@@ -397,13 +408,18 @@ int main(int, char**) {
     SDL_SetHint(SDL_HINT_ANDROID_TRAP_BACK_BUTTON, "1");
 #endif
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_GAMEPAD | SDL_INIT_AUDIO | SDL_INIT_SENSOR)) {
+        LOGE("app: SDL_Init failed: %s", SDL_GetError());
         SDL_Log("SDL_Init: %s", SDL_GetError());
+        logx::Flush();
         return 1;
     }
+#ifndef __APPLE__
     logx::Init((app::ExeDir() / "logs").string(), app::kGame.log);
+#endif
     app::Load();
     if (app::kGame.init) app::kGame.init();
     app::LogSystem();
+    LOGI("app: SDL ready");
 
 #ifdef __APPLE__
     // MoltenVK is linked in: SDL finds its entry points in the executable and makes the Vulkan surface with them
@@ -411,11 +427,14 @@ int main(int, char**) {
 #endif
 
     std::string title = Utf8(app::kGame.title);
+    LOGI("app: opening the window");
     g_window = SDL_CreateWindow(title.c_str(), 0, 0, SDL_WINDOW_FULLSCREEN | SDL_WINDOW_VULKAN | SDL_WINDOW_HIGH_PIXEL_DENSITY);
     if (!g_window) {
         LOGE("app: no window: %s", SDL_GetError());
+        logx::Flush();
         return 1;
     }
+    LOGI("app: window up");
 
     app::GameFiles game;
     if (!app::FindGame(game)) {
@@ -433,11 +452,15 @@ int main(int, char**) {
     InitUi();
     input::Init();
     if (app::kGame.window) app::kGame.window(g_window);
+    LOGI("app: booting the image");
     if (!kernel::Boot(std::move(game.xbe), IMAGE_XBE, game.dir.string(), (app::ExeDir() / "hdd").string())) {
+        LOGE("app: boot failed");
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, Utf8(app::kGame.short_title).c_str(),
                                  "The game failed to start, see the log in the logs folder.", g_window);
+        logx::Flush();
         return 1;
     }
+    LOGI("app: booted");
 
     for (;;) {
         SDL_Event e;
