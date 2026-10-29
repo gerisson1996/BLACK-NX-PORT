@@ -26,6 +26,7 @@
 #include <mutex>
 #include <sstream>
 #include <string>
+#include <system_error>
 #include <thread>
 
 #include <imgui.h>
@@ -280,10 +281,16 @@ std::filesystem::path ExeDir() {
         if (!p) p = SDL_GetAndroidInternalStoragePath();
         return std::filesystem::path(p ? p : ".");
 #else
-        // iOS: the app's Documents folder, which the Files app and Finder can see
-        char* p = SDL_GetPrefPath("black", "black");
-        std::filesystem::path d = p ? p : ".";
-        SDL_free(p);
+        // iOS: the app's Documents folder, which the Files app and Finder can see. SDL's pref path is Library/Application
+        // Support, out of the player's reach, so the settings, logs and game live under Documents/black instead
+        std::filesystem::path d = ".";
+        if (char* p = SDL_GetUserFolder(SDL_FOLDER_DOCUMENTS)) {
+            d = p;
+            SDL_free(p);
+        }
+        d /= "black";
+        std::error_code ec;
+        std::filesystem::create_directories(d, ec);
         return d;
 #endif
     }();
@@ -416,6 +423,13 @@ int main(int, char**) {
     app::GameFiles game;
     if (!app::FindGame(game)) {
         logx::Flush();
+#ifdef __APPLE__
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Black",
+                                 "The game files were not found. Put them in the app's Documents/black/game folder "
+                                 "(Files app or Finder: default.xbe plus chars, data, export, language, levels, sound "
+                                 "and videos), then open the app again.",
+                                 g_window);
+#endif
         return 1;
     }
 
