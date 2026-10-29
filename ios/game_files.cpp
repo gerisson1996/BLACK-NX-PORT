@@ -3,8 +3,7 @@
 // US one by src/common/europe.patch, embedded by CMake.
 #include <sys/stat.h>
 
-#include <chrono>
-#include <thread>
+#include <SDL3/SDL.h>
 
 #include <algorithm>
 #include <cctype>
@@ -27,9 +26,18 @@ namespace {
 
 namespace fs = std::filesystem;
 
-// the game's folder beside the settings, and an assets folder in it
+// the game's folder beside the settings, and an assets folder in it; the Files app and iTunes drop folders at the
+// app's Documents root, so that layout is looked at too
 std::vector<fs::path> AssetFolders() {
-    return {ExeDir() / "game", ExeDir() / "game" / "assets", ExeDir() / "assets"};
+    std::vector<fs::path> out{ExeDir() / "game", ExeDir() / "game" / "assets", ExeDir() / "assets"};
+    if (const char* documents = SDL_GetUserFolder(SDL_FOLDER_DOCUMENTS)) {
+        fs::path d = documents;
+        out.push_back(d / "game");
+        out.push_back(d / "game" / "assets");
+        out.push_back(d / "assets");
+        out.push_back(d / "black" / "game");
+    }
+    return out;
 }
 
 std::string Sha1(const std::vector<uint8_t>& data) {
