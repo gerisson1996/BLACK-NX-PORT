@@ -90,8 +90,14 @@ target_include_directories(black SYSTEM PRIVATE ${THIRD}/imgui)
 target_compile_options(black PRIVATE -fno-strict-aliasing -fsigned-char)
 set_source_files_properties(${IMGUI_SOURCES} PROPERTIES COMPILE_DEFINITIONS IMGUI_DISABLE_DEFAULT_SHELL_FUNCTIONS)
 set_source_files_properties(${NATIVE}/vk_shader.cpp PROPERTIES COMPILE_DEFINITIONS ENABLE_HLSL)
-set_source_files_properties(${GEN_SOURCES} PROPERTIES COMPILE_OPTIONS
-    "-O3;-fvect-cost-model=very-cheap;-w;-fno-strict-aliasing;-fsigned-char")
+# -O3 on the recompiled code: the x86 is the hot path everywhere. The vectorization cost model is GCC's; AppleClang
+# does not know the flag and vectorizes at -O3 on its own
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(GEN_OPTIONS "-O3;-fvect-cost-model=very-cheap;-w;-fno-strict-aliasing;-fsigned-char")
+else()
+    set(GEN_OPTIONS "-O3;-w;-fno-strict-aliasing;-fsigned-char")
+endif()
+set_source_files_properties(${GEN_SOURCES} PROPERTIES COMPILE_OPTIONS "${GEN_OPTIONS}")
 set_source_files_properties(${GAME}/common/europe.patch PROPERTIES HEADER_FILE_ONLY TRUE)
 
 set_target_properties(black PROPERTIES
