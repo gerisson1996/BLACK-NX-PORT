@@ -421,7 +421,11 @@ private:
     }
 
     void Run() {
+#ifdef __APPLE__
+        pthread_setname_np("render");  // Apple's takes the name alone, for the calling thread
+#else
         pthread_setname_np(pthread_self(), "render");
+#endif
         for (;;) {
             Batch* b;
             {
