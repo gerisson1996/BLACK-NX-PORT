@@ -19,6 +19,7 @@
 #include <chrono>
 #include <cmath>
 #include <condition_variable>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
@@ -392,14 +393,17 @@ void Dispatch(const SDL_Event& e) {
 int main(int, char**) {
     LogToLogcat();
 #ifdef __APPLE__
-    // before SDL: a window, Vulkan or audio failure must still leave a log the player can send. HOME is the app's
-    // container, whose Documents folder is the one the Files app shows
-    {
-        std::filesystem::path docs = ".";
-        if (const char* home = std::getenv("HOME")) docs = std::filesystem::path(home) / "Documents";
-        logx::Init((docs / "black" / "logs").string(), app::kGame.log);
+    // a plain file before SDL: if the window or Vulkan cannot start, this is the only trace. The logger itself is
+    // opened once, after SDL, so two handles never share the same log
+    if (const char* home = std::getenv("HOME")) {
+        std::filesystem::path dir = std::filesystem::path(home) / "Documents" / "black" / "logs";
+        std::error_code ec;
+        std::filesystem::create_directories(dir, ec);
+        if (FILE* f = std::fopen((dir / "boot.txt").string().c_str(), "w")) {
+            std::fprintf(f, "start %s\n", BLACK_COMMIT);
+            std::fclose(f);
+        }
     }
-    LOGI("app: starting");
 #endif
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
@@ -413,9 +417,7 @@ int main(int, char**) {
         logx::Flush();
         return 1;
     }
-#ifndef __APPLE__
     logx::Init((app::ExeDir() / "logs").string(), app::kGame.log);
-#endif
     app::Load();
     if (app::kGame.init) app::kGame.init();
     app::LogSystem();
