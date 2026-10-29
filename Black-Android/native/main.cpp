@@ -402,9 +402,8 @@ int main(int, char**) {
     app::LogSystem();
 
 #ifdef __APPLE__
-    // MoltenVK travels in the app bundle: SDL loads it from there and makes the Vulkan surface with it
-    if (!SDL_Vulkan_LoadLibrary("@executable_path/Frameworks/MoltenVK.framework/MoltenVK"))
-        LOGE("app: no MoltenVK: %s", SDL_GetError());
+    // MoltenVK is linked in: SDL finds its entry points in the executable and makes the Vulkan surface with them
+    if (!SDL_Vulkan_LoadLibrary(nullptr)) LOGE("app: no Vulkan: %s", SDL_GetError());
 #endif
 
     std::string title = Utf8(app::kGame.title);
