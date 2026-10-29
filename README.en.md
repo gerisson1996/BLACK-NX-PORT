@@ -21,6 +21,8 @@ The port supports the **Brazilian Portuguese translation by Tokyo Games RGH**. I
 
 ### ☕ Support the project
 
+**We need your help!** The tools I use to make these ports are **paid**, and every donation helps keep them and keep the project going. Want another game ported or an improvement? **Send your request with your donation** (in the Ko-fi, PayPal or Pix message).
+
 If you enjoy the port, consider supporting it:
 
 - **Ko-fi:** [ko-fi.com/gerissoncassiano](https://ko-fi.com/gerissoncassiano)

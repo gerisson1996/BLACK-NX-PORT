@@ -23,7 +23,6 @@
 #ifdef __SWITCH__
 #include <malloc.h>
 #include <switch.h>
-extern "C" u32 __nx_applet_exit_mode;  // libnx's applet.c, not in its headers
 #endif
 
 namespace dispatch {
@@ -270,15 +269,18 @@ std::atomic<bool> g_quit{false};
 bool QuitAsked() { return g_quit; }
 
 void FinishQuit() {
-    // a process that ends unasked closes with an error unless the system was told: the exit lock goes, then libnx's
-    // applet exit with its exit mode 1 tells it the title is leaving (an application's Exit, a library applet's
-    // ExitProcessAndReturn) and closes the applet services. The applet thread does it, so no message loop still
-    // reads a service closed under it
+    // a process that ends unasked closes with an error: the system ends it instead, as a game's own exit has it.
+    // The exit lock goes, ISelfController's Exit (0) tells the system the title is leaving, and the system then
+    // ends the process; it is ended here only if the system has not after a few seconds
     LOGR("Quit: telling the system");
     logx::Flush();
     appletUnlockExit();
-    __nx_applet_exit_mode = 1;
-    appletExit();
+    Result rc = serviceDispatch(appletGetServiceSession_SelfController(), 0);
+    LOGR("Quit: exit asked (result %08X)", rc);
+    logx::Flush();
+    svcSleepThread(5000000000ll);
+    LOGR("Quit: the system has not ended the title, ending it");
+    logx::Flush();
     svcExitProcess();
     std::_Exit(0);
 }

@@ -20,6 +20,8 @@ Funciona com a tradução **PT-BR da Tokyo Games RGH**: o `default.xbe` europeu 
 
 ### ☕ Apoie o projeto
 
+**Precisamos da sua ajuda!** As ferramentas que uso para fazer estes ports são **pagas**, e cada doação ajuda a mantê-las e a continuar o projeto. Quer ver outro jogo portado ou uma melhoria? **Faça seu pedido junto com a sua doação** (escreva na mensagem do Ko-fi, do PayPal ou do Pix).
+
 Se o port foi útil para você, considere apoiar:
 
 - **Ko-fi:** [ko-fi.com/gerissoncassiano](https://ko-fi.com/gerissoncassiano)

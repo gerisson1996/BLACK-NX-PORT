@@ -20,6 +20,8 @@ El port admite la **traducción al portugués de Brasil de Tokyo Games RGH**. Su
 
 ### ☕ Apoya el proyecto
 
+**¡Necesitamos tu ayuda!** Las herramientas que uso para hacer estos ports son **de pago**, y cada donación ayuda a mantenerlas y a seguir con el proyecto. ¿Quieres ver otro juego portado o una mejora? **Haz tu pedido junto con tu donación** (en el mensaje de Ko-fi, PayPal o Pix).
+
 Si el port te resultó útil, considera apoyarlo:
 
 - **Ko-fi:** [ko-fi.com/gerissoncassiano](https://ko-fi.com/gerissoncassiano)
