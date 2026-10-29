@@ -21,6 +21,7 @@ El port admite la **traducción al portugués de Brasil de Tokyo Games RGH**. Su
 Si el port te resultó útil, considera apoyarlo:
 
 - **Ko-fi:** [ko-fi.com/gerissoncassiano](https://ko-fi.com/gerissoncassiano)
+- **PayPal:** [Donar con PayPal](https://www.paypal.com/donate/?hosted_button_id=B3YTKT29F5ZLG)
 - **Pix (Brasil):** `pocketneogames@gmail.com`
 
 > [!IMPORTANT]

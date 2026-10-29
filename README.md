@@ -21,6 +21,7 @@ Funciona com a tradução **PT-BR da Tokyo Games RGH**: o `default.xbe` europeu 
 Se o port foi útil para você, considere apoiar:
 
 - **Ko-fi:** [ko-fi.com/gerissoncassiano](https://ko-fi.com/gerissoncassiano)
+- **PayPal:** [Doar pelo PayPal](https://www.paypal.com/donate/?hosted_button_id=B3YTKT29F5ZLG)
 - **Pix:** `pocketneogames@gmail.com`
 
 > [!IMPORTANT]
