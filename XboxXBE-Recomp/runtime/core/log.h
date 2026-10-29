@@ -15,8 +15,8 @@ void Write(Level lv, const char* fmt, ...) __attribute__((format(printf, 2, 3)))
 void Flush();
 const std::string& Path();
 
-#if defined(__SWITCH__)
-// the console has no debugger here: every line, flushed (log.cpp), is what a crash leaves to read
+#if defined(__SWITCH__) || defined(__APPLE__)
+// no debugger on the console or the phone: every line, flushed (log.cpp), is what a crash leaves to read
 inline constexpr bool kVerbose = true;
 #elif defined(NDEBUG)
 inline constexpr bool kVerbose = false;

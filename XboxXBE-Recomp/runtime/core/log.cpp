@@ -68,8 +68,8 @@ void Write(Level lv, const char* fmt, ...) {
     n = std::min(n, int(sizeof(line)) - 1);
     if (g_file) {
         std::fwrite(line, 1, size_t(n), g_file);
-#ifdef __SWITCH__
-        std::fflush(g_file);  // a crash kills the process with nothing else written: every line reaches the card
+#if defined(__SWITCH__) || defined(__APPLE__)
+        std::fflush(g_file);  // a crash kills the process with nothing else written: every line reaches the file
 #else
         if (lv >= Level::Warn) std::fflush(g_file);
 #endif

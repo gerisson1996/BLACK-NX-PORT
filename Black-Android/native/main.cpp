@@ -464,6 +464,10 @@ int main(int, char**) {
     }
     LOGI("app: booted");
 
+#ifdef __APPLE__
+    // a line every 5 s: a log that stops with these still coming is a hang, not a kill
+    auto alive = std::chrono::steady_clock::now();
+#endif
     for (;;) {
         SDL_Event e;
         if (SDL_WaitEventTimeout(&e, 100)) {
@@ -471,5 +475,11 @@ int main(int, char**) {
             while (SDL_PollEvent(&e)) Dispatch(e);
         }
         touch::Pump();
+#ifdef __APPLE__
+        if (std::chrono::steady_clock::now() - alive > std::chrono::seconds(5)) {
+            alive = std::chrono::steady_clock::now();
+            LOGI("app: alive");
+        }
+#endif
     }
 }
