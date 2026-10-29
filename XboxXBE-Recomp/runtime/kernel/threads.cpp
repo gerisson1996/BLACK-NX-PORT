@@ -92,6 +92,8 @@ void NameHostThread(const char* name) {
     if (set) set(GetCurrentThread(), w);
 #elif defined(__SWITCH__)
     (void)name;  // newlib has no pthread_setname_np
+#elif defined(__APPLE__)
+    pthread_setname_np(name);  // Apple's takes the name alone, for the calling thread
 #else
     pthread_setname_np(pthread_self(), name);
 #endif
