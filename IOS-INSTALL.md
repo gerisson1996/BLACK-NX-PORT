@@ -1,5 +1,7 @@
 # Instalando o Black no iPhone (iOS)
 
+🇧🇷 **Português** · 🇺🇸 [English](IOS-INSTALL.en.md) · 🇪🇸 [Español](IOS-INSTALL.es.md)
+
 Este guia cobre as três formas mais usadas de instalar o `Black-iOS-0.2.4.ipa`:
 
 - **A — Sideloadly** (PC com Windows ou macOS, cabo USB, assinatura com seu Apple ID)
