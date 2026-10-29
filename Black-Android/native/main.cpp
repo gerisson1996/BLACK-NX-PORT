@@ -4,6 +4,9 @@
 #include <SDL3/SDL_main.h>
 #ifdef __APPLE__
 #include <SDL3/SDL_vulkan.h>
+#include <execinfo.h>
+#include <fcntl.h>
+#include <signal.h>
 #endif
 #ifdef __ANDROID__
 #include <android/log.h>
@@ -23,6 +26,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <exception>
 #include <cwchar>
 #include <fstream>
 #include <mutex>
@@ -390,9 +394,65 @@ void Dispatch(const SDL_Event& e) {
 
 }  // namespace
 
+#ifdef __APPLE__
+namespace {
+
+// a crash on the phone leaves nothing to read unless the process writes it: signal, faulting address and a backtrace
+// go to Documents/black/logs/crash.txt. Open/write only, the handler runs on the faulting thread
+char g_crash_path[1024];
+
+void CrashWrite(const char* text, size_t n) {
+    int fd = ::open(g_crash_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if (fd < 0) return;
+    ssize_t ignored = ::write(fd, text, n);
+    (void)ignored;
+    ::close(fd);
+}
+
+void OnSignal(int sig, siginfo_t* info, void*) {
+    char head[256];
+    int n = std::snprintf(head, sizeof head, "\nsignal %d, address %p\n", sig, info ? info->si_addr : nullptr);
+    CrashWrite(head, size_t(n));
+    int fd = ::open(g_crash_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if (fd >= 0) {
+        void* frames[64];
+        int count = backtrace(frames, 64);
+        backtrace_symbols_fd(frames, count, fd);
+        ::close(fd);
+    }
+    _exit(128 + sig);
+}
+
+void InstallCrashHandlers() {
+    std::filesystem::path dir = ".";
+    if (const char* home = std::getenv("HOME")) dir = std::filesystem::path(home) / "Documents" / "black" / "logs";
+    std::error_code ec;
+    std::filesystem::create_directories(dir, ec);
+    std::snprintf(g_crash_path, sizeof g_crash_path, "%s", (dir / "crash.txt").string().c_str());
+    struct sigaction sa {};
+    sa.sa_sigaction = OnSignal;
+    sa.sa_flags = SA_SIGINFO | SA_RESETHAND;
+    sigemptyset(&sa.sa_mask);
+    for (int sig : {SIGSEGV, SIGBUS, SIGILL, SIGFPE, SIGABRT}) sigaction(sig, &sa, nullptr);
+    std::set_terminate([] {
+        CrashWrite("\nstd::terminate\n", 16);
+        try {
+            throw;
+        } catch (const std::exception& e) {
+            CrashWrite(e.what(), std::strlen(e.what()));
+        } catch (...) {
+        }
+        _exit(134);
+    });
+}
+
+}  // namespace
+#endif
+
 int main(int, char**) {
     LogToLogcat();
 #ifdef __APPLE__
+    InstallCrashHandlers();
     // a plain file before SDL: if the window or Vulkan cannot start, this is the only trace. The logger itself is
     // opened once, after SDL, so two handles never share the same log
     if (const char* home = std::getenv("HOME")) {
@@ -418,6 +478,15 @@ int main(int, char**) {
         return 1;
     }
     logx::Init((app::ExeDir() / "logs").string(), app::kGame.log);
+#ifdef __APPLE__
+    // a line every 5 s from its own thread: a log that stops with these still coming is a hang, not a kill
+    std::thread([] {
+        for (;;) {
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            LOGI("app: alive");
+        }
+    }).detach();
+#endif
     app::Load();
     if (app::kGame.init) app::kGame.init();
     app::LogSystem();
@@ -464,10 +533,6 @@ int main(int, char**) {
     }
     LOGI("app: booted");
 
-#ifdef __APPLE__
-    // a line every 5 s: a log that stops with these still coming is a hang, not a kill
-    auto alive = std::chrono::steady_clock::now();
-#endif
     for (;;) {
         SDL_Event e;
         if (SDL_WaitEventTimeout(&e, 100)) {
@@ -475,11 +540,5 @@ int main(int, char**) {
             while (SDL_PollEvent(&e)) Dispatch(e);
         }
         touch::Pump();
-#ifdef __APPLE__
-        if (std::chrono::steady_clock::now() - alive > std::chrono::seconds(5)) {
-            alive = std::chrono::steady_clock::now();
-            LOGI("app: alive");
-        }
-#endif
     }
 }

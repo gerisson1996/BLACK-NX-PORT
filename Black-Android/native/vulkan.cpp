@@ -1202,8 +1202,28 @@ private:
 bool VulkanBackend::Init(uint32_t width, uint32_t height) {
     guest_w_ = width;
     guest_h_ = height;
+    LOGI("vulkan: init %ux%u", width, height);
     vkshader::Init(app::ExeDir() / "shadercache");
-    if (!CreateInstance() || !CreateSurface() || !PickDevice() || !CreateDevice()) return false;
+    if (!CreateInstance()) {
+        LOGE("vulkan: instance failed");
+        return false;
+    }
+    LOGI("vulkan: instance");
+    if (!CreateSurface()) {
+        LOGE("vulkan: surface failed");
+        return false;
+    }
+    LOGI("vulkan: surface");
+    if (!PickDevice()) {
+        LOGE("vulkan: no device");
+        return false;
+    }
+    LOGI("vulkan: device picked");
+    if (!CreateDevice()) {
+        LOGE("vulkan: device creation failed");
+        return false;
+    }
+    LOGI("vulkan: device");
     alloc_.Init(pd_, dev_);
     if (!CreateLayouts() || !CreateFrames() || !CreateSwapchain() || !CreateFixedImages()) return false;
     Begin();
