@@ -23,7 +23,8 @@ struct Settings {
     bool vsync = true;
     bool cpu_boost = false;          // the Switch: fast CPU clocks while a film decodes, the GPU at its minimum then
     uint32_t aniso = 0;              // 0 as the game asks
-    std::string join_ip;                   // co-op: a host past the LAN the system link search also asks
+    std::string join_ip;             // co-op: a host past the LAN the system link search also asks
+    std::string game_url;            // iOS: a direct link to the player's own disc image, fetched on the first run
 };
 
 Settings& Get();

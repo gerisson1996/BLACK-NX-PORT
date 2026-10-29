@@ -4,6 +4,7 @@
 #include <SDL3/SDL_main.h>
 #ifdef __APPLE__
 #include <SDL3/SDL_vulkan.h>
+#include "download.h"
 #include <execinfo.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -208,6 +209,7 @@ toml::table Table() {
                   {"vsync", s.vsync},
                   {"anisotropic_filtering", int64_t(s.aniso)},
                   {"join_ip", s.join_ip},
+                  {"game_url", s.game_url},
                   {"defaults", int64_t(kDefaults)}};
     for (const Option& o : kGame.options) {
         if (o.flag) t.insert(o.key, *o.flag);
@@ -258,6 +260,7 @@ void Load() {
     s.vsync = t["vsync"].value_or(s.vsync);
     s.aniso = t["anisotropic_filtering"].value_or(s.aniso);
     s.join_ip = t["join_ip"].value_or(s.join_ip);
+    s.game_url = t["game_url"].value_or(s.game_url);
     if (t["defaults"].value_or(int64_t(0)) < kDefaults) PhoneFrameDefaults(s);
     for (const Option& o : kGame.options) {
         if (o.flag) *o.flag = t[o.key].value_or(*o.flag);
@@ -548,13 +551,53 @@ int main(int, char**) {
     LOGI("app: window up");
 
     app::GameFiles game;
-    if (!app::FindGame(game)) {
+    bool found = app::FindGame(game);
+#ifdef __APPLE__
+    // no game yet and a link in black.toml: fetch the player's own image while the event loop keeps running, then look
+    // again. The app ships no game data and no link of its own
+    if (!found && !app::Get().game_url.empty()) {
+        const std::string url = app::Get().game_url;
+        const std::filesystem::path dest = app::ExeDir() / "game.iso";
+        std::atomic<int> percent{0};
+        std::atomic<bool> done{false};
+        std::string error;
+        LOGI("game: downloading the player's image from %s", url.c_str());
+        std::thread worker([&] {
+            if (!IosDownloadFile(url, dest.string(), percent, error)) LOGE("game: download failed: %s", error.c_str());
+            done = true;
+        });
+        int shown = -1;
+        while (!done) {
+            SDL_PumpEvents();
+            SDL_Event e;
+            while (SDL_PollEvent(&e)) Dispatch(e);
+            if (const int step = percent.load() / 10; step != shown) {
+                shown = step;
+                LOGI("game: download %d%%", percent.load());
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        worker.join();
+        std::error_code ec;
+        if (error.empty()) {
+            const auto size = std::filesystem::file_size(dest, ec);
+            // a web page instead of the image (a share link that needs a confirmation) is not a disc
+            if (ec || size < 64ull * 1024 * 1024) {
+                LOGE("game: the download is not a disc image (%llu bytes), removed", (unsigned long long)size);
+                std::filesystem::remove(dest, ec);
+            }
+        }
+        found = app::FindGame(game);
+    }
+#endif
+    if (!found) {
         logx::Flush();
 #ifdef __APPLE__
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Black",
                                  "The game files were not found. Put them in the app's Documents/black/game folder "
                                  "(Files app or Finder: default.xbe plus chars, data, export, language, levels, sound "
-                                 "and videos), then open the app again.",
+                                 "and videos) or an .iso in Documents, or set game_url in black.toml to a direct link "
+                                 "to your own disc image.",
                                  g_window);
 #endif
         return 1;
