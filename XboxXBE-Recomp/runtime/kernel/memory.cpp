@@ -142,6 +142,18 @@ bool Init() {
 // page commit map, one byte per 4 KB page
 static std::vector<uint8_t> g_committed(0x100000, 0);
 
+#if !defined(_WIN32) && !defined(__SWITCH__)
+// the host's page can be larger than the guest's 4 KB (iOS on A14 and later uses 16 KB): mprotect and madvise work in
+// host pages, so a guest range is widened to them
+static uintptr_t HostPage() {
+    static const uintptr_t page = [] {
+        long v = sysconf(_SC_PAGESIZE);
+        return uintptr_t(v > 0 ? v : 4096);
+    }();
+    return page;
+}
+#endif
+
 bool Commit(uint32_t va, uint32_t size) {
     if (!size || InPhysical(va)) return true;
     uint32_t first = va & ~(kPage - 1);
@@ -158,7 +170,10 @@ bool Commit(uint32_t va, uint32_t size) {
         return false;
     }
 #else
-    if (mprotect(g_base + first, size_t(end - first), PROT_READ | PROT_WRITE)) {
+    uintptr_t page = HostPage();
+    uintptr_t from = uintptr_t(g_base + first) & ~(page - 1);
+    uintptr_t to = (uintptr_t(g_base) + end + page - 1) & ~(page - 1);
+    if (mprotect(reinterpret_cast<void*>(from), size_t(to - from), PROT_READ | PROT_WRITE)) {
         LOGE("memory: commit %08X+%X failed", first, uint32_t(end - first));
         return false;
     }
@@ -183,8 +198,14 @@ void Decommit(uint32_t va, uint32_t size) {
 #elif defined(_WIN32)
     VirtualFree(g_base + first, size_t(end - first), MEM_DECOMMIT);
 #else
-    madvise(g_base + first, size_t(end - first), MADV_DONTNEED);
-    mprotect(g_base + first, size_t(end - first), PROT_NONE);
+    // inward: only host pages fully inside the guest range are given back, a neighbour there stays committed
+    uintptr_t page = HostPage();
+    uintptr_t from = (uintptr_t(g_base + first) + page - 1) & ~(page - 1);
+    uintptr_t to = (uintptr_t(g_base) + end) & ~(page - 1);
+    if (from < to) {
+        madvise(reinterpret_cast<void*>(from), size_t(to - from), MADV_DONTNEED);
+        mprotect(reinterpret_cast<void*>(from), size_t(to - from), PROT_NONE);
+    }
 #endif
     for (uint64_t p = first; p < end; p += kPage) g_committed[size_t(p >> 12)] = 0;
 }
