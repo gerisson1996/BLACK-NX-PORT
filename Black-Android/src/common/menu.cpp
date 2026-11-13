@@ -14,6 +14,7 @@
 
 #include <SDL3/SDL.h>
 #include <imgui.h>
+#include <imgui_internal.h>
 
 #include "app/app.h"
 #include "audio/output.h"
@@ -33,7 +34,27 @@ void SetSensitivity(float s);
 bool InvertX();
 bool InvertY();
 void SetInvert(bool x, bool y);
+#ifdef __SWITCH__
+// switch/gyro.cpp's own
+float Vertical();
+void SetVertical(float v);
+uint32_t Axis();
+void SetAxis(uint32_t a);
+float Steadiness();
+void SetSteadiness(float s);
+bool DriftFix();
+void SetDriftFix(bool on);
+uint32_t AimAssist();
+void SetAimAssist(uint32_t a);
+#endif
 }  // namespace gyro
+
+#ifdef __SWITCH__
+namespace screen {  // switch/screen.cpp
+float HandheldGamma();
+void SetHandheldGamma(float g);
+}  // namespace screen
+#endif
 
 // native/touch.cpp: the touch controls' layout
 namespace touch {
@@ -195,8 +216,19 @@ int OptionRow(const char* label, const char* value) {
     ImGui::Selectable("##row", false, ImGuiSelectableFlags_AllowOverlap, ImVec2(box.row_w, box.row_h));
     if (ImGui::IsItemFocused()) {
         FillItem();
-        if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow) || ImGui::IsKeyPressed(ImGuiKey_GamepadDpadLeft)) step = -1;
-        if (ImGui::IsKeyPressed(ImGuiKey_RightArrow) || ImGui::IsKeyPressed(ImGuiKey_GamepadDpadRight)) step = 1;
+        // the controller's left and right step the value, the dpad or the left stick: taken from ImGui's
+        // navigation, which would move the focus off the row (onto the footer's buttons, near the bottom)
+        constexpr ImGuiKey kLeft[] = {ImGuiKey_GamepadDpadLeft, ImGuiKey_GamepadLStickLeft};
+        constexpr ImGuiKey kRight[] = {ImGuiKey_GamepadDpadRight, ImGuiKey_GamepadLStickRight};
+        ImGuiID id = ImGui::GetItemID();
+        for (ImGuiKey k : kLeft) ImGui::SetKeyOwner(k, id);
+        for (ImGuiKey k : kRight) ImGui::SetKeyOwner(k, id);
+        if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow)) step = -1;
+        if (ImGui::IsKeyPressed(ImGuiKey_RightArrow)) step = 1;
+        for (ImGuiKey k : kLeft)
+            if (ImGui::IsKeyPressed(k)) step = -1;
+        for (ImGuiKey k : kRight)
+            if (ImGui::IsKeyPressed(k)) step = 1;
     }
     RowLabel(box, label);
     ImGui::PushItemFlag(ImGuiItemFlags_NoNav | ImGuiItemFlags_ButtonRepeat, true);  // held arrows keep stepping
@@ -233,7 +265,8 @@ enum RowId { kRenderResolution, kMaxFps, kVsync, kFpsCounter, kAniso, kReloadBlu
              kFmvScale, kGyro, kGyroSensitivity, kTouchLayout, kTouchOpacity, kTouchSize, kTouchEdit,
              kInfiniteAmmo, kRapidFire, kNoRecoil, kGameSpeed, kGodMode, kOneHitKill, kInfiniteGrenades,
              kCheckUpdates, kTouchSensitivity, kLeftDeadzone, kRightDeadzone, kLeftSensitivity, kRightSensitivity,
-             kScreenFilter, kGyroInvertX, kGyroInvertY, kUnlockLevels, kUnlockBlackOps };
+             kScreenFilter, kGyroInvertX, kGyroInvertY, kUnlockLevels, kUnlockBlackOps, kGyroVertical, kGyroAxis,
+             kGyroSteadiness, kGyroDriftFix, kAimAssist, kHandheldShadows };
 
 using rows::Kind;
 using rows::Row;
@@ -246,6 +279,9 @@ constexpr Row kGraphicsRows[] = {
     {Kind::Value, kViewmodelFov, "VIEWMODEL FIELD OF VIEW"},
     {Kind::Value, kFmvScale, "FMV SCALE"},
     {Kind::Value, kScreenFilter, "SCREEN FILTER"},
+#ifdef __SWITCH__
+    {Kind::Value, kHandheldShadows, "HANDHELD SHADOWS (OLED)"},
+#endif
     {Kind::Heading, -1, "PERFORMANCE"},
     {Kind::Value, kVsync, "VERTICAL SYNC"},
     {Kind::Value, kMaxFps, "MAX FRAME RATE"},
@@ -266,6 +302,13 @@ constexpr Row kTouchRows[] = {
     {Kind::Heading, -1, "MOTION CONTROLS"},
     {Kind::Value, kGyro, "GYROSCOPE"},
     {Kind::Value, kGyroSensitivity, "GYRO SENSITIVITY"},
+#ifdef __SWITCH__
+    {Kind::Value, kGyroVertical, "GYRO VERTICAL SPEED"},
+    {Kind::Value, kGyroAxis, "GYRO HORIZONTAL AXIS"},
+    {Kind::Value, kGyroSteadiness, "GYRO STEADINESS"},
+    {Kind::Value, kGyroDriftFix, "GYRO DRIFT CORRECTION"},
+    {Kind::Value, kAimAssist, "GAME AIM ASSIST"},
+#endif
     {Kind::Value, kGyroInvertX, "GYRO INVERT X"},
     {Kind::Value, kGyroInvertY, "GYRO INVERT Y"},
 };
@@ -452,11 +495,16 @@ void StepInputRow(int id, int step, char (&text)[64]) {
             std::snprintf(text, sizeof(text), "%u%%", o.walk_speed);
             break;
         case kGyro:
-            // off, always on, while firing
+            // off, always on, while firing; on the Switch also while aiming (ZL held), as Bullet Witch's port has it
+#ifdef __SWITCH__
+            if (step) gyro::SetMode(uint32_t(StepIndex(int(gyro::CurrentMode()), step, 4)));
+#else
             if (step) gyro::SetMode(uint32_t(StepIndex(int(gyro::CurrentMode()), step, 3)));
-            std::snprintf(text, sizeof(text), "%s", gyro::CurrentMode() == 0 ? "OFF"
+#endif
+            std::snprintf(text, sizeof(text), "%s", gyro::CurrentMode() == 0   ? "OFF"
                                                     : gyro::CurrentMode() == 1 ? "ALWAYS"
-                                                                               : "WHILE FIRING");
+                                                    : gyro::CurrentMode() == 2 ? "WHILE FIRING"
+                                                                               : "WHILE AIMING (ZL)");
             break;
         case kTouchLayout:
             // the presets, CUSTOM once a control was moved
@@ -482,10 +530,60 @@ void StepInputRow(int id, int step, char (&text)[64]) {
             std::snprintf(text, sizeof(text), "CHECK");
             break;
         case kGyroSensitivity:
-            // 0.1 to 5.0 in steps of 0.1
+            // 0.1 to 5.0 in steps of 0.1, on the Switch to 10.0
+#ifdef __SWITCH__
+            if (step) gyro::SetSensitivity(float(StepRange(int(std::lround(gyro::Sensitivity() * 10.0f)), 1, 100, 1, step)) / 10.0f);
+#else
             if (step) gyro::SetSensitivity(float(StepRange(int(std::lround(gyro::Sensitivity() * 10.0f)), 1, 50, 1, step)) / 10.0f);
+#endif
             std::snprintf(text, sizeof(text), "%.1f", gyro::Sensitivity());
             break;
+#ifdef __SWITCH__
+        case kGyroVertical:
+            // 10% to 300% of the sensitivity in steps of 10
+            if (step) gyro::SetVertical(float(StepRange(int(std::lround(gyro::Vertical() * 100.0f)), 10, 300, 10, step)) / 100.0f);
+            std::snprintf(text, sizeof(text), "%d%%", int(std::lround(gyro::Vertical() * 100.0f)));
+            break;
+        case kGyroAxis:
+            // turning the controller, leaning it (a steering wheel), or both
+            if (step) gyro::SetAxis(uint32_t(StepIndex(int(gyro::Axis()), step, 3)));
+            std::snprintf(text, sizeof(text), "%s", gyro::Axis() == 0 ? "TURN" : gyro::Axis() == 1 ? "LEAN" : "TURN + LEAN");
+            break;
+        case kGyroSteadiness:
+            // OFF, then 0.5 to 6.0 degrees a second in steps of 0.5
+            if (step) gyro::SetSteadiness(float(StepRange(int(std::lround(gyro::Steadiness() * 2.0f)), 0, 12, 1, step)) / 2.0f);
+            if (gyro::Steadiness() <= 0)
+                std::snprintf(text, sizeof(text), "OFF");
+            else
+                std::snprintf(text, sizeof(text), "%.1f", gyro::Steadiness());
+            break;
+        case kGyroDriftFix:
+            if (step) gyro::SetDriftFix(!gyro::DriftFix());
+            std::snprintf(text, sizeof(text), "%s", OnOff(gyro::DriftFix()));
+            break;
+        case kAimAssist: {
+            // the game's pull of the aim to an enemy: on, off while the gyro is on, or off
+            static const char* const kNames[] = {"ON", "OFF WITH GYRO", "OFF"};
+            if (step) gyro::SetAimAssist(uint32_t(StepIndex(int(gyro::AimAssist()), step, 3)));
+            std::snprintf(text, sizeof(text), "%s", kNames[gyro::AimAssist() % 3]);
+            break;
+        }
+        case kHandheldShadows: {
+            // the exponent on the handheld screen: OFF 1.0, then each level lifts the shadows more
+            static const float kGammas[] = {1.0f, 0.9f, 0.8f, 0.7f, 0.6f};
+            static const char* const kNames[] = {"OFF", "LOW", "MEDIUM", "HIGH", "MAX"};
+            int at = 0;
+            for (int i = 0; i < 5; i++)
+                if (std::fabs(screen::HandheldGamma() - kGammas[i]) < std::fabs(screen::HandheldGamma() - kGammas[at]))
+                    at = i;
+            if (step) {
+                at = StepRange(at, 0, 4, 1, step);
+                screen::SetHandheldGamma(kGammas[at]);
+            }
+            std::snprintf(text, sizeof(text), "%s", kNames[at]);
+            break;
+        }
+#endif
         case kGyroInvertX:
         case kGyroInvertY: {
             // kept with the gyro's other settings in android.toml, so not one of ToggleFlag's

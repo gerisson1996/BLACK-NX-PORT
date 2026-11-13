@@ -39,7 +39,12 @@ void MouseLook(X86Context& ctx, uint8_t*) {
     float dx;
     float dy;
     if (!input::TakeMouse(dx, dy)) return;
+#ifdef __SWITCH__
+    // Cold Fear's gyro: the turn as it is, the scope's zoom does not slow it
+    float scale = kDegrees;
+#else
     float scale = kDegrees * ctx.xmm[2].f[0];
+#endif
     G<float>(ctx.esi + kControllerYaw) -= std::remainder(dx * scale, 360.0f);
     G<float>(ctx.esi + kControllerPitch) += dy * scale;
 }
@@ -49,8 +54,11 @@ void MouseLook(X86Context& ctx, uint8_t*) {
 namespace input {
 bool GyroAiming();  // switch/gyro.cpp: the gyro turns the view now
 }
+namespace gyro {
+uint32_t CurrentMode();
+}
 // nor while the gyro aims: the slow down near a target and the pull to it fight a turn made by hand
-bool AimAssist(X86Context&, uint8_t*) { return !input::KeyboardActive() && !input::GyroAiming(); }
+bool AimAssist(X86Context&, uint8_t*) { return !input::KeyboardActive() && !input::GyroAiming() && gyro::CurrentMode() == 0; }
 #else
 bool AimAssist(X86Context&, uint8_t*) { return !input::KeyboardActive(); }
 #endif

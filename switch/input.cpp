@@ -10,6 +10,7 @@
 #include <mutex>
 
 #include "app/app.h"
+#include "common/menu.h"
 #include "common/options.h"
 #include "core/log.h"
 #include "host.h"
@@ -105,6 +106,16 @@ Pad Poll(int port) {
     {
         std::lock_guard lock(g_lock);
         Read(g_pads[port], p);
+    }
+    // the options panel takes the controllers while it is open, and the game sees nothing of the sticks pressed
+    // in to open or close it
+    constexpr uint16_t kThumbs = (1u << 6) | (1u << 7);
+    static bool held = false;
+    if (port == 0) held = (p.buttons & kThumbs) == kThumbs || (held && (p.buttons & kThumbs));
+    if (app::MenuOpen() || held) {
+        bool connected = p.connected;
+        p = Pad{};
+        p.connected = connected;
     }
     const game::Options& o = game::Opt();
     Shape(p.lx, p.ly, o.left_deadzone, o.left_sensitivity);

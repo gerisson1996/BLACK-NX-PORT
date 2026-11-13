@@ -3,9 +3,11 @@
 #include <switch.h>
 
 #include <chrono>
+#include <cmath>
 
 #include <imgui.h>
 
+#include "common/menu.h"
 #include "host.h"
 
 namespace ui {
@@ -23,6 +25,12 @@ void NewFrame(float width, float height) {
 
     io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
     uint64_t b = input::NavButtons();
+    // both sticks pressed in together open and close the options panel, the F10 of the PC builds
+    constexpr uint64_t kCombo = HidNpadButton_StickL | HidNpadButton_StickR;
+    static bool combo = false;
+    bool both = (b & kCombo) == kCombo;
+    if (both && !combo) app::ToggleMenu();
+    combo = both;
     struct Map {
         ImGuiKey key;
         uint64_t button;
@@ -36,15 +44,19 @@ void NewFrame(float width, float height) {
         {ImGuiKey_GamepadDpadUp, HidNpadButton_Up},      {ImGuiKey_GamepadDpadDown, HidNpadButton_Down},
         {ImGuiKey_GamepadL1, HidNpadButton_L},           {ImGuiKey_GamepadR1, HidNpadButton_R},
     };
-    for (const Map& m : kMap) io.AddKeyEvent(m.key, (b & m.button) != 0);
+    // the left stick is the dpad here: ImGui moves its focus only on the dpad and scrolls on the stick, so a stick
+    // pushed up or down scrolled the panel instead of going to the next row
     float x = 0, y = 0;
     input::NavStick(x, y);
-    auto stick = [&](ImGuiKey neg, ImGuiKey pos, float v) {
-        io.AddKeyAnalogEvent(neg, v < -0.3f, v < -0.3f ? -v : 0);
-        io.AddKeyAnalogEvent(pos, v > 0.3f, v > 0.3f ? v : 0);
-    };
-    stick(ImGuiKey_GamepadLStickLeft, ImGuiKey_GamepadLStickRight, x);
-    stick(ImGuiKey_GamepadLStickDown, ImGuiKey_GamepadLStickUp, y);  // libnx: up is positive
+    constexpr float kPush = 0.5f;
+    if (std::fabs(x) > std::fabs(y)) {
+        if (x < -kPush) b |= HidNpadButton_Left;
+        if (x > kPush) b |= HidNpadButton_Right;
+    } else {
+        if (y > kPush) b |= HidNpadButton_Up;  // libnx: up is positive
+        if (y < -kPush) b |= HidNpadButton_Down;
+    }
+    for (const Map& m : kMap) io.AddKeyEvent(m.key, (b & m.button) != 0);
 }
 
 }  // namespace ui

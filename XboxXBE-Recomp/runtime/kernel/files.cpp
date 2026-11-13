@@ -529,7 +529,7 @@ static uint32_t Transfer(const Args& a, bool write, uint32_t pages) {
     uint32_t n = 0;
     while (n < len) {
         uint32_t at = pages ? R32(pages + n / 0x1000 * 8) + n % 0x1000 : buf + n;
-        uint32_t chunk = pages ? std::min(len - n, 0x1000 - n % 0x1000) : len;
+        uint32_t chunk = pages ? std::min(len - n, 0x1000 - n % 0x1000) : len - n;
 #ifdef __SWITCH__
         // guest memory is code memory here, which the file system's IPC refuses as a buffer: through the heap
         static thread_local std::vector<uint8_t> bounce;

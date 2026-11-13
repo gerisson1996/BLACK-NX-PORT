@@ -630,6 +630,88 @@ static bool SkipPressed() {
     return pressed;
 }
 
+// The film decoder's colour step, most of a film's time: one 16x16 block of 4:2:0 to 32-bit pixels (stdcall: y, u, v,
+// y pitch, uv pitch, out, out pitch) with the constants its caller left in mm5..mm7 and xmm4..xmm7, mm4 zero. 0x2401D2
+// also sets the top byte from mm7 (0x23FE0B leaves it 0). The guest's MMX/SSE as scalar code made 640x480 films play
+// at 5 frames a second on the Switch at its normal clocks; this is the same arithmetic.
+X86_EXTERN_FUNC(__imp__sub_0023FE0B);
+X86_EXTERN_FUNC(__imp__sub_002401D2);
+namespace {
+inline uint32_t YuvChannel(float v) { return uint32_t(std::clamp(sse_cvt(v) >> 15, 0, 255)); }
+
+template <bool kAlpha>
+void YuvBlock(const X86Context& ctx, const uint8_t* y, const uint8_t* u, const uint8_t* v, uint32_t ys, uint32_t uvs,
+              uint8_t* out, uint32_t os) {
+    int16_t m5[4], m7[4];
+    int32_t m6[2];
+    uint32_t top[2];
+    std::memcpy(m5, &ctx.mm[5], 8);
+    std::memcpy(m6, &ctx.mm[6], 8);
+    std::memcpy(m7, &ctx.mm[7], 8);
+    std::memcpy(top, &ctx.mm[7], 8);
+    top[0] = kAlpha ? top[0] << 20 : 0;
+    top[1] = kAlpha ? top[1] << 20 : 0;
+    const float* x4 = ctx.xmm[4].f;
+    const float* x5 = ctx.xmm[5].f;
+    const float* x6 = ctx.xmm[6].f;
+    const float* x7 = ctx.xmm[7].f;
+    for (int r = 0; r < 8; r++) {
+        const uint8_t* ur = u + r * uvs;
+        const uint8_t* vr = v + r * uvs;
+        float cu[8], cv[8];
+        for (int k = 0; k < 8; k++) {
+            cu[k] = float(int32_t(ur[k] + uint32_t(m6[k & 1])));
+            cv[k] = float(int32_t(vr[k] + uint32_t(m6[k & 1])));
+        }
+        for (int row = 0; row < 2; row++) {
+            const uint8_t* yr = y + (2 * r + row) * ys;
+            uint32_t* o = reinterpret_cast<uint32_t*>(out + (2 * r + row) * os);
+            for (int x = 0; x < 16; x++) {
+                int k = x >> 1, lane = x & 3, w = (x & 1) * 2;
+                int32_t yy = int16_t(uint16_t(yr[x] + uint16_t(m7[lane])));
+                float l = float(int32_t(uint32_t(yy * m5[w]) + uint32_t(yy * m5[w + 1])));
+                uint32_t a = YuvChannel(cu[k] * x4[lane] + l);
+                uint32_t b = YuvChannel(cv[k] * x7[lane] + l);
+                uint32_t c = YuvChannel((l + cv[k] * x5[lane]) + cu[k] * x6[lane]);
+                uint32_t px = top[x & 1] | a | (c << 8) | (b << 16);
+                std::memcpy(o + x, &px, 4);
+            }
+        }
+    }
+}
+
+// the first blocks run both ways and are compared, for the log; on a difference the guest's code stays
+template <bool kAlpha>
+void YuvStep(X86Context& ctx, uint8_t* base, void (*guest)(X86Context&, uint8_t*), int& checks) {
+    Args a{ctx};
+    uint32_t ys = a[3], uvs = a[4], out = a[5], os = a[6];
+    if (checks < 64) {
+        uint8_t mine[16 * 64];
+        YuvBlock<kAlpha>(ctx, base + a[0], base + a[1], base + a[2], ys, uvs, mine, 64);
+        guest(ctx, base);
+        int diff = 0;
+        for (int r = 0; r < 16; r++)
+            for (int i = 0; i < 64; i++) diff += std::abs(int(base[out + r * os + i]) - int(mine[r * 64 + i])) > 1;
+        if (diff || ++checks == 64)
+            LOGI("film colour %s: native %s (%d bytes off)", kAlpha ? "2401D2" : "23FE0B", diff ? "differs, guest kept" : "matches", diff);
+        if (diff) checks = 1 << 30;
+        return;
+    }
+    if (checks > 64) return guest(ctx, base);
+    YuvBlock<kAlpha>(ctx, base + a[0], base + a[1], base + a[2], ys, uvs, base + out, os);
+    Return(ctx, 0, 7);
+}
+}  // namespace
+
+X86_FUNC(sub_0023FE0B) {
+    static int checks = 0;
+    YuvStep<false>(ctx, base, __imp__sub_0023FE0B, checks);
+}
+X86_FUNC(sub_002401D2) {
+    static int checks = 0;
+    YuvStep<true>(ctx, base, __imp__sub_002401D2, checks);
+}
+
 // film player: +0 the movie
 constexpr uint32_t kFilmName = 0x84;
 constexpr uint32_t kFilmFlags = 0x198;

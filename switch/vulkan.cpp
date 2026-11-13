@@ -1173,6 +1173,7 @@ private:
     uint8_t ramp_[768] = {};
     bool ramp_dirty_ = false;
     bool gamma_ = false;
+    float lift_ = 1.0f;  // the handheld screen's exponent in the ramp now (screen.cpp)
     Target* draw_rt_ = nullptr;
     Target* draw_ds_ = nullptr;
     uint32_t guest_w_ = 640, guest_h_ = 480;
@@ -3211,13 +3212,18 @@ void VulkanBackend::UploadGammaRamp() {
     ramp_dirty_ = false;
     Alloc a = Upload(256 * 4, 16);
     bool identity = true;
+    lift_ = screen::Gamma();
+    // the handheld screen's lift after the game's ramp: below 1 lifts the shadows, black and white stay
+    auto lift = [this](uint8_t v) {
+        return lift_ == 1.0f ? v : uint8_t(std::lround(255.0f * std::pow(v / 255.0f, lift_)));
+    };
     for (int i = 0; i < 256; i++) {
         uint8_t* p = a.cpu + i * 4;
-        p[0] = ramp_[512 + i];
-        p[1] = ramp_[256 + i];
-        p[2] = ramp_[i];
+        p[0] = lift(ramp_[512 + i]);
+        p[1] = lift(ramp_[256 + i]);
+        p[2] = lift(ramp_[i]);
         p[3] = 255;
-        identity &= ramp_[i] == i && ramp_[256 + i] == i && ramp_[512 + i] == i;
+        identity &= p[0] == i && p[1] == i && p[2] == i;
     }
     gamma_ = !identity;
     Transition(lut_, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -3274,6 +3280,7 @@ void VulkanBackend::SavePipelineCache() {
 void VulkanBackend::Present(const Surface& front) {
     Target* t = EnsureTarget(front, false);
     if (t && LatchCpuWrite(*t)) UploadTarget(*t, front);
+    if (screen::Gamma() != lift_) ramp_dirty_ = true;  // docked or undocked, or the setting changed
     if (ramp_dirty_) UploadGammaRamp();
     uint32_t index = 0;
     bool shown = AcquireImage(index);
